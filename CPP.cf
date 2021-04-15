@@ -1,23 +1,38 @@
-PDefs.   Program ::= [Def] ;
+PDefs.  Program ::= [Def] ;
 
-DFun.    Def    ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
+DFun.       Def ::= Type Id "(" [Arg] ")" Body ;
+DFunInline. Def ::= "inline" Type Id "(" [Arg] ")" Body ;
 
 terminator Def "" ;
 
-ADecl.   Arg    ::= Type Id ;
+ADecl.              Arg    ::= Type ;
+ADeclId.            Arg    ::= Type Id ;
+ADeclIdExp.         Arg    ::= Type Id "=" Exp ;
+ADeclConst.         Arg    ::= "const" Type ;
+ADeclConstId.       Arg    ::= "const" Type Id ;
+ADeclConstIdExp.    Arg    ::= "const" Type Id "=" Exp ;
 
 separator Arg "," ;
 
+BDef. Body  ::= "{" [Stm] "}" ;
+
 SExp.        Stm ::= Exp ";" ;
-SDecls.      Stm ::= Type [Id] ";" ;
-SInit.       Stm ::= Type Id "=" Exp ";" ;
+{-SDecls.      Stm ::= Type [Id] ";" ;
+SInit.       Stm ::= Type Id "=" Exp ";" ;-}
 SReturn.     Stm ::= "return" Exp ";" ;
-SReturnVoid. Stm ::= "return" ";" ;
+{-SReturnVoid. Stm ::= "return" ";" ;
 SWhile.      Stm ::= "while" "(" Exp ")" Stm ;
 SBlock.      Stm ::= "{" [Stm] "}" ;
-SIfElse.     Stm ::= "if" "(" Exp ")" Stm "else" Stm ;
+SIfElse.     Stm ::= "if" "(" Exp ")" Stm "else" Stm ;-}
+SStream.     Stm ::= Stream ;
 
 terminator Stm "" ;
+
+StrIn. Stream     ::= [In] ";" ;
+
+IExp. In ::= Exp ;
+
+separator nonempty In "<<" ;
 
 ETrue.   Exp15  ::= "true" ;
 EFalse.  Exp15  ::= "false" ;
@@ -25,8 +40,9 @@ EInt.    Exp15  ::= Integer ;
 EDouble. Exp15  ::= Double ;
 EString. Exp15  ::= String ;
 EId.     Exp15  ::= Id ; 
+EQConst. Exp15  ::= Id "::" Id ;
 
-EApp.    Exp15  ::= Id "(" [Exp] ")" ;
+{-EApp.    Exp15  ::= Id "(" [Exp] ")" ;
 
 EPIncr.  Exp14  ::= Exp15 "++" ;
 EPDecr.  Exp14  ::= Exp15 "--" ;
@@ -46,7 +62,7 @@ EEq.     Exp8   ::= Exp8  "==" Exp9 ;
 ENEq.    Exp8   ::= Exp8  "!=" Exp9 ;
 EAnd.    Exp4   ::= Exp4  "&&" Exp5 ;
 EOr.     Exp3   ::= Exp3  "||" Exp4 ;
-EAss.    Exp2   ::= Exp3 "=" Exp2 ;
+EAss.    Exp2   ::= Exp3 "=" Exp2 ;-}
 
 internal ETyped. Exp15 ::= "(" Exp ":" Type ")" ;
 
@@ -54,7 +70,7 @@ coercions Exp 15 ;
 
 separator Exp "," ;
 
-rules Type   ::= "bool" | "int" | "double" | "void" | "string" ;
+rules Type   ::= Id | "bool" | "int" | "double" | "void" | "char" ;
 
 token Id (letter (letter | digit | '_')*) ;
 
@@ -63,4 +79,3 @@ separator nonempty Id "," ;
 comment "#" ;
 comment "//" ;
 comment "/*" "*/" ;
-
