@@ -128,7 +128,7 @@ separator Exp "," ;
 
 ---------------------- Type rules -------------------------------
 
-rules Type  ::= "bool" | "int" | "double" | "void" | "char" | [Id] | Type "&" ;
+rules Type  ::= "bool" | "int" | "double" | "void" | "char" | [Id] | Type "&" | [Id] "<" [Type] ">" ;
 
 separator nonempty Type "," ;
 
