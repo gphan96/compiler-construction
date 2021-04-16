@@ -32,6 +32,7 @@ SReturnV.   Stm   ::= "return" ";" ;
 SWhile.     Stm   ::= "while" "(" Exp ")" Stm ;
 SBlock.     Stm   ::= "{" [Stm] "}" ;
 SIfElse.    Stm   ::= "if" "(" Exp ")" Stm Else;
+STypedef.   Stm   ::= "typedef" Type Id ";" ;
 
 terminator Stm "" ;
 
@@ -50,7 +51,10 @@ ETrue.      Exp15  ::= "true" ;
 EFalse.     Exp15  ::= "false" ;
 EInt.       Exp15  ::= Integer ;
 EDouble.    Exp15  ::= Double ;
-EString.    Exp15  ::= String ;
+EString.    Exp15  ::= [String] ;
+
+separator nonempty String "";
+
 
 --// Qualified constants
 EConst.     Exp15  ::= [Id] ;
