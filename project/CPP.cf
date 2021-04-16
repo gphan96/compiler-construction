@@ -14,19 +14,26 @@ rules FunBlock ::= "{" [Stm] "}" | ";" ;
 
 ---------------------- Arg rules --------------------------------
 
-ADecl.   Arg   ::= APre Type Rest ;
+ADecl.   Arg   ::= Const Type Rest ;
 
 separator Arg "," ;
 
-rules APre  ::= "const" | ;
 rules Rest  ::= Var | ;
+
+---------------------- Declaration rules ------------------------
+
+rules Const  ::= "const" | ;
+
+rules Var   ::= Id | Id "=" Exp ;
+
+separator nonempty Var "," ;
 
 ---------------------- Stm rules --------------------------------
 
 SExp.       Stm   ::= Exp ";" ;
 SDecl1.     Stm   ::= Type [Var] ";" ;
 SDecl2.     Stm   ::= "const" Type [Var] ";" ;
-SDecl3.     Stm   ::= "constinit" APre Type Id "=" Exp ";" ;
+SDecl3.     Stm   ::= "constinit" Const Type Id "=" Exp ";" ;
 SReturn.    Stm   ::= "return" Exp ";" ;
 SReturnV.   Stm   ::= "return" ";" ;
 SWhile.     Stm   ::= "while" "(" Exp ")" Stm ;
@@ -37,10 +44,6 @@ STypedef.   Stm   ::= "typedef" Type Id ";" ;
 SEmtpy.     Stm   ::= ";" ;
 
 terminator Stm "" ;
-
-rules Var   ::= Id | Id "=" Exp ;
-
-separator nonempty Var "," ;
 
 rules Else  ::= "else" Stm | "" ;
 
