@@ -2,8 +2,9 @@ PDefs.   Program  ::= [Def] ;
 
 ---------------------- Def rules --------------------------------
 
-DFun.    Def   ::= FPre Type Id "(" [Arg] ")" FunBlock ;
-DUsing.  Def   ::= "using" Type ";" ;
+DFun.     Def   ::= FPre Type Id "(" [Arg] ")" FunBlock ;
+DUsing.   Def   ::= "using" Type ";" ;
+DTypedef. Def   ::= "typedef" Type Id ";" ;
 
 terminator Def "" ;
 
