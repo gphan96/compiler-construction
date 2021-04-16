@@ -4,7 +4,7 @@ happy -i ParCPP.y
 happy -da ParCPP.y
 make
 ./TestCPP ../tests/1-hello.cc
-#./TestCPP ../tests/2-greet.cc
+./TestCPP ../tests/2-greet.cc
 #./TestCPP ../tests/3-med.cc
 #./TestCPP ../tests/4-grade.cc
 #./TestCPP ../tests/5-palin.cc

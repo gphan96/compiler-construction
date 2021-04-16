@@ -2,6 +2,7 @@ PDefs.  Program ::= [Def] ;
 
 DFun.       Def ::= Type Id "(" [Arg] ")" Body ;
 DFunInline. Def ::= "inline" Type Id "(" [Arg] ")" Body ;
+DUsing.     Def ::= "using" Id "::" Id ";" ;
 
 terminator Def "" ;
 
@@ -17,8 +18,8 @@ separator Arg "," ;
 BDef. Body  ::= "{" [Stm] "}" ;
 
 SExp.        Stm ::= Exp ";" ;
-{-SDecls.      Stm ::= Type [Id] ";" ;
-SInit.       Stm ::= Type Id "=" Exp ";" ;-}
+SDecls.      Stm ::= Type [Id] ";" ;
+--SInit.       Stm ::= Type Id "=" Exp ";"
 SReturn.     Stm ::= "return" Exp ";" ;
 {-SReturnVoid. Stm ::= "return" ";" ;
 SWhile.      Stm ::= "while" "(" Exp ")" Stm ;
@@ -28,11 +29,16 @@ SStream.     Stm ::= Stream ;
 
 terminator Stm "" ;
 
-StrIn. Stream     ::= [In] ";" ;
+StrIn.  Stream ::= [In] ";" ;
+StrOut. Stream ::= [Out] ";" ;
 
 IExp. In ::= Exp ;
 
 separator nonempty In "<<" ;
+
+OExp. Out ::= Exp ;
+
+separator nonempty Out ">>" ;
 
 ETrue.   Exp15  ::= "true" ;
 EFalse.  Exp15  ::= "false" ;
@@ -40,7 +46,7 @@ EInt.    Exp15  ::= Integer ;
 EDouble. Exp15  ::= Double ;
 EString. Exp15  ::= String ;
 EId.     Exp15  ::= Id ; 
-EQConst. Exp15  ::= Id "::" Id ;
+EQName.  Exp15  ::= Id "::" Id ;
 
 {-EApp.    Exp15  ::= Id "(" [Exp] ")" ;
 
@@ -70,7 +76,7 @@ coercions Exp 15 ;
 
 separator Exp "," ;
 
-rules Type   ::= Id | "bool" | "int" | "double" | "void" | "char" ;
+rules Type   ::= Id "::" Id | Id | "bool" | "int" | "double" | "void" | "char" ;
 
 token Id (letter (letter | digit | '_')*) ;
 
