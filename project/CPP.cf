@@ -3,7 +3,7 @@ PDefs.   Program  ::= [Def] ;
 ---------------------- Def rules --------------------------------
 
 DFun.     Def   ::= FPre Type Id "(" [Arg] ")" FunBlock ;
-DUsing.   Def   ::= "using" Type ";" ;
+DUsing.   Def   ::= "using" [Id] ";" ;
 DTypedef. Def   ::= "typedef" Type Id ";" ;
 
 terminator Def "" ;
@@ -34,13 +34,20 @@ SExp.       Stm   ::= Exp ";" ;
 SDecl1.     Stm   ::= Type [Var] ";" ;
 SDecl2.     Stm   ::= "const" Type [Var] ";" ;
 SDecl3.     Stm   ::= "constinit" Const Type Id "=" Exp ";" ;
+
 SReturn.    Stm   ::= "return" Exp ";" ;
 SReturnV.   Stm   ::= "return" ";" ;
+
 SWhile.     Stm   ::= "while" "(" Exp ")" Stm ;
+SDoWhile.   Stm   ::= "do" Stm "while" "(" Exp ")" ;
 SFor.       Stm   ::= "for" "(" Type Var ";" Exp ";" Exp ")" Stm ;
+
 SBlock.     Stm   ::= "{" [Stm] "}" ;
+
 SIfElse.    Stm   ::= "if" "(" Exp ")" Stm Else;
+
 STypedef.   Stm   ::= "typedef" Type Id ";" ;
+
 SEmtpy.     Stm   ::= ";" ;
 
 terminator Stm "" ;
@@ -71,7 +78,7 @@ EApp.       Exp15  ::= Id "(" [Exp] ")" ;
 EProj1.     Exp14  ::= Exp14 "."  Exp15 ;
 EProj2.     Exp14  ::= Exp14 "->" Exp15 ;
 
---// In/Decrement, Dereferencing and Negation
+--// In/Decrement, Dereferencing and Negation, unary plus and minus
 ELIncr.     Exp14  ::= Exp15 "++" ;
 ELDecr.     Exp14  ::= Exp15 "--" ;
 
@@ -79,6 +86,8 @@ ERIncr.     Exp13  ::= "++" Exp14 ;
 ERDecr.     Exp13  ::= "--" Exp14 ;
 ENeg.       Exp13  ::= "!"  Exp14 ;
 EDeref.     Exp13  ::= "*"  Exp14 ;
+EUPlus.     Exp13  ::= "+"  Exp14 ;
+EUMinus.    Exp13  ::= "-"  Exp14 ;
 
 --// Arithmetic operations
 EMod.       Exp12  ::= Exp12 "%" Exp13 ;
@@ -92,6 +101,7 @@ ELShift.    Exp10  ::= Exp10 "<<" Exp11 ;
 ERShift.    Exp10  ::= Exp10 ">>" Exp11 ;
 
 --// Comparison and Logical operations
+E3Way.      Exp9   ::= Exp9  "<=>" Exp10 ;
 ELt.        Exp9   ::= Exp9  "<"   Exp10 ;
 EGt.        Exp9   ::= Exp9  ">"   Exp10 ;
 ELtEq.      Exp9   ::= Exp9  "<="  Exp10 ;
