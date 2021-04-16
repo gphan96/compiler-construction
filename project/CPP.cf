@@ -52,6 +52,7 @@ ETrue.      Exp15  ::= "true" ;
 EFalse.     Exp15  ::= "false" ;
 EInt.       Exp15  ::= Integer ;
 EDouble.    Exp15  ::= Double ;
+EChar.      Exp15  ::= Char ;
 EString.    Exp15  ::= [String] ;
 
 separator nonempty String "";
