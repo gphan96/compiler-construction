@@ -31,9 +31,11 @@ SDecl3.     Stm   ::= SPre Type Id "=" Exp ";" ;
 SReturn.    Stm   ::= "return" Exp ";" ;
 SReturnV.   Stm   ::= "return" ";" ;
 SWhile.     Stm   ::= "while" "(" Exp ")" Stm ;
+SFor.       Stm   ::= "for" "(" Type Var ";" Exp ";" Exp ")" Stm ;
 SBlock.     Stm   ::= "{" [Stm] "}" ;
 SIfElse.    Stm   ::= "if" "(" Exp ")" Stm Else;
 STypedef.   Stm   ::= "typedef" Type Id ";" ;
+SEmtpy.     Stm   ::= ";" ;
 
 terminator Stm "" ;
 
