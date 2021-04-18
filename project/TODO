@@ -1,7 +1,7 @@
 Literal spread in several line  DONE
 typedef (test3) DONE
 typedef (test6) DONE
-struct
-top-level struct
+struct		 DONE
+top-level struct DONE
 top-level variable declarations and initializations
 
