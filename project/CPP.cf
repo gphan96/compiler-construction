@@ -1,10 +1,10 @@
 PDefs.   Program  ::= [Def] ;
 
 ---------------------- Def rules --------------------------------
-
 DFun.     Def   ::= FPre Type Id "(" [Arg] ")" FunBlock ;
 DUsing.   Def   ::= "using" [Id] ";" ;
 DTypedef. Def   ::= "typedef" Type Id ";" ;
+DStruct.  Def   ::= "struct" Id "{" [Decl] "}" ";" ;
 
 terminator Def "" ;
 
@@ -21,19 +21,22 @@ separator Arg "," ;
 rules Rest  ::= Var | ;
 
 ---------------------- Declaration rules ------------------------
+Decl1. Decl 	::= Type [Var] ";" ;
+Decl2. Decl 	::= "const" Type [Var] ";" ;
+Decl3. Decl 	::= "constinit" Const Type Id "=" Exp ";" ;
 
-rules Const  ::= "const" | ;
+terminator Decl "" ;
 
-rules Var   ::= Id | Id "=" Exp ;
+rules Const     ::= "const" | ;
+
+rules Var       ::= Id | Id "=" Exp ;
 
 separator nonempty Var "," ;
 
 ---------------------- Stm rules --------------------------------
 
 SExp.       Stm   ::= Exp ";" ;
-SDecl1.     Stm   ::= Type [Var] ";" ;
-SDecl2.     Stm   ::= "const" Type [Var] ";" ;
-SDecl3.     Stm   ::= "constinit" Const Type Id "=" Exp ";" ;
+SDecl1.     Stm   ::= Decl ;
 
 SReturn.    Stm   ::= "return" Exp ";" ;
 SReturnV.   Stm   ::= "return" ";" ;
@@ -47,6 +50,8 @@ SBlock.     Stm   ::= "{" [Stm] "}" ;
 SIfElse.    Stm   ::= "if" "(" Exp ")" Stm Else;
 
 STypedef.   Stm   ::= "typedef" Type Id ";" ;
+
+SStruct.    Stm   ::= "struct" Id "{" [Decl] "}" ;
 
 SEmtpy.     Stm   ::= ";" ;
 
