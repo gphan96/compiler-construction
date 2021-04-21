@@ -109,14 +109,15 @@ ELShift.    Exp10  ::= Exp10 "<<" Exp11 ;
 ERShift.    Exp10  ::= Exp10 ">>" Exp11 ;
 
 --// Comparison and Logical operations
-ELt.        Exp9   ::= Exp9  "<"   Exp10 ;
-EGt.        Exp9   ::= Exp9  ">"   Exp10 ;
-ELtEq.      Exp9   ::= Exp9  "<="  Exp10 ;
-EGtEq.      Exp9   ::= Exp9  ">="  Exp10 ;
-EEq.        Exp8   ::= Exp8  "=="  Exp9 ;
-ENEq.       Exp8   ::= Exp8  "!="  Exp9 ;
-EAnd.       Exp4   ::= Exp4  "&&"  Exp5 ;
-EOr.        Exp3   ::= Exp3  "||"  Exp4 ;
+ETwc.       Exp9   ::= Exp9 "<=>" Exp10 ;
+ELt.        Exp9   ::= Exp9 "<"   Exp10 ;
+EGt.        Exp9   ::= Exp9 ">"   Exp10 ;
+ELtEq.      Exp9   ::= Exp9 "<="  Exp10 ;
+EGtEq.      Exp9   ::= Exp9 ">="  Exp10 ;
+EEq.        Exp8   ::= Exp8 "=="  Exp9 ;
+ENEq.       Exp8   ::= Exp8 "!="  Exp9 ;
+EAnd.       Exp4   ::= Exp4 "&&"  Exp5 ;
+EOr.        Exp3   ::= Exp3 "||"  Exp4 ;
 
 --// Assignment
 EAssPlus.   Exp2   ::= Exp3 "+=" Exp2 ;
