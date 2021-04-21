@@ -16,11 +16,9 @@ rules FunBlock ::= "(" [Arg] ")" "{" [Stm] "}" | "(" [Arg] ")" ";" ;
 ---------------------- Typedef and Struct -----------------------
 
 rules Typedef  ::= "typedef" Type Id ";" ;
---| "typedef" "struct" "{" [Field] "}" Id ";" | "typedef" Type Id "[" Integer "]" ";" ;
 rules Struct   ::= "struct" Id "{" [Field] "}" ";" ;
 
-rules Field ::= Var ";" ;
---| Typedef | Type Id FunBlock | Struct ;
+rules Field ::= Type Id ";" ;
 terminator Field "" ;
 
 ---------------------- Arg rules -------------------------------
@@ -42,15 +40,11 @@ VDecl1.  Var   ::= Type [IdIn] ;
 VDecl2.  Var   ::= "const" Type [IdIn] ;
 VDecl3.  Var   ::= "constinit" Const Type [IdIn] ;
 VDecl4.  Var   ::= "const" "constinit" Type [IdIn] ;
---VDecl5.  Var   ::= "inline" Var ;
 
 ---------------------- Stm rules -------------------------------
 
 SExp.       Stm   ::= Exp ";" ;
 SDecl.      Stm   ::= Var ";" ;
---SDecl1.     Stm   ::= Type [IdIn] ";" ;
---SDecl2.     Stm   ::= "const" Type [IdIn] ";" ;
---SDecl3.     Stm   ::= "constinit" Const Type Id "=" Exp ";" ;
 SReturn.    Stm   ::= "return" Exp ";" ;
 SReturnV.   Stm   ::= "return" ";" ;
 SWhile.     Stm   ::= "while" "(" Exp ")" Stm ;
