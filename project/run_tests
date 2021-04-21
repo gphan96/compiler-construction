@@ -1,8 +1,53 @@
+#!/usr/bin/env bash
+
 bnfc -o bnfc -m CPP.cf
 cd bnfc
-happy -i ParCPP.y
+info=$( happy -i ParCPP.y 2>&1 )
 happy -da ParCPP.y
 make
+
+if [[ "$1" == "-runall" ]]; then
+	# Info message
+	shift_reduce=$( grep -Po "shift/reduce conflicts:  \\d+" <<< "$info"  | tr -d -c 0-9 )
+	reduce_reduce=$( grep -Po "reduce/reduce conflicts:  \\d+" <<< "$info" | tr -d -c 0-9 )
+
+	# Status messages 
+	SUCCESS="Parse Successful!"
+	FAIL="Failed..."
+
+	# Define whether parsing of a particular test is expected to succeed or fail.
+	declare -A expectedRes=( ["1-hello.cc"]="$SUCCESS" ["2-greet.cc"]="$SUCCESS" ["3-med.cc"]="$SUCCESS" 
+						     ["4-grade.cc"]="$SUCCESS" ["5-palin.cc"]="$SUCCESS" ["6-grammar.cc"]="$SUCCESS" )
+
+	for test in ../../tests/*; do
+		echo "Running test $test..."
+
+		result=$( ./TestCPP "$test" 2>&1 ) 
+		fileName=$( basename "$test" )
+		expect="${expectedRes[$fileName]}"
+
+		echo "..expecting the output message: $expect"
+
+		if [[ -z "$expect" ]]; then
+		 	echo "WARNING: expected output for $fileName not defined"
+		elif [[ "$result" == *"$expect"* ]]; then
+			echo "Parsed successfully!";
+		 else
+			echo "$result";
+		fi
+	done
+
+	if [[ "$shift_reduce" -gt 5 ]]; then
+		echo "WARNING: The grammar contains more than the allowed 5 shift/reduce conflicts ($shift_reduce)."
+	fi
+
+	if [[ "$reduce_reduce" -gt 0 ]]; then
+		echo "WARNING: The grammar contains a reduce/reduce conflict ($reduce_reduce)."
+	fi
+
+	exit 0
+fi
+
 ./TestCPP ../../tests/1-hello.cc
 ./TestCPP ../../tests/2-greet.cc
 #./TestCPP ../../tests/3-med.cc
