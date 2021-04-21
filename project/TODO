@@ -3,5 +3,6 @@ typedef (test3) DONE
 typedef (test6) DONE
 struct		 DONE
 top-level struct DONE
-top-level variable declarations and initializations (Run 71)
+top-level variable declarations and initializations DONE
+Check function definitions and comparison operators. (Run 89)
 
