@@ -4,5 +4,6 @@ typedef (test6) DONE
 struct		 DONE
 top-level struct DONE
 top-level variable declarations and initializations DONE
-Check function definitions and comparison operators. (Run 89)
+Check function definitions and comparison operators. (Run 89) DONE
+clean up and minimize grammar if possible 
 
