@@ -1,59 +1,64 @@
 PDefs.   Program  ::= [Def] ;
 
----------------------- Def rules --------------------------------
-DFun.     Def   ::= FPre Type Id "(" [Arg] ")" FunBlock ;
-DUsing.   Def   ::= "using" [Id] ";" ;
-DTypedef. Def   ::= "typedef" Type Id ";" ;
-DStruct.  Def   ::= "struct" Id "{" [Decl] "}" ";" ;
+---------------------- Def rules ------------------------------
+
+DFun1.      Def   ::= "inline" Type Id FunBlock ;
+DFun2.      Def   ::= Type Id FunBlock ;
+DDecl.      Def   ::= Var ";" ;
+DUsing.     Def   ::= "using" Type ";" ;
+DTypedef.   Def   ::= Typedef ;
+DStruct.    Def   ::= Struct ;
 
 terminator Def "" ;
 
-rules FPre  ::= "inline" | "" ;
+rules FunBlock ::= "(" [Arg] ")" "{" [Stm] "}" | "(" [Arg] ")" ";" ;
 
-rules FunBlock ::= "{" [Stm] "}" | ";" ;
+---------------------- Typedef and Struct -----------------------
 
----------------------- Arg rules --------------------------------
+rules Typedef  ::= "typedef" Type Id ";" ;
+--| "typedef" "struct" "{" [Field] "}" Id ";" | "typedef" Type Id "[" Integer "]" ";" ;
+rules Struct   ::= "struct" Id "{" [Field] "}" ";" ;
 
-ADecl.   Arg   ::= Const Type Rest ;
+rules Field ::= Var ";" ;
+--| Typedef | Type Id FunBlock | Struct ;
+terminator Field "" ;
 
+---------------------- Arg rules -------------------------------
+
+ADecl1.   Arg   ::= Const Type IdIn ;
+ADecl2.   Arg   ::= Const Type ;
+ 
 separator Arg "," ;
 
-rules Rest  ::= Var | ;
+---------------------- Var rules -------------------------------
 
----------------------- Declaration rules ------------------------
-Decl1. Decl 	::= Type [Var] ";" ;
-Decl2. Decl 	::= "const" Type [Var] ";" ;
-Decl3. Decl 	::= "constinit" Const Type Id "=" Exp ";" ;
+rules IdIn  ::= Id | Id "=" Exp ;
 
-terminator Decl "" ;
+separator nonempty IdIn "," ;
 
-rules Const     ::= "const" | ;
+rules Const  ::= "const" | "" ;
 
-rules Var       ::= Id | Id "=" Exp ;
+VDecl1.  Var   ::= Type [IdIn] ;
+VDecl2.  Var   ::= "const" Type [IdIn] ;
+VDecl3.  Var   ::= "constinit" Const Type [IdIn] ;
+--VDecl4.  Var   ::= "inline" Var ;
 
-separator nonempty Var "," ;
-
----------------------- Stm rules --------------------------------
+---------------------- Stm rules -------------------------------
 
 SExp.       Stm   ::= Exp ";" ;
-SDecl1.     Stm   ::= Decl ;
-
+SDecl.      Stm   ::= Var ";" ;
+--SDecl1.     Stm   ::= Type [IdIn] ";" ;
+--SDecl2.     Stm   ::= "const" Type [IdIn] ";" ;
+--SDecl3.     Stm   ::= "constinit" Const Type Id "=" Exp ";" ;
 SReturn.    Stm   ::= "return" Exp ";" ;
 SReturnV.   Stm   ::= "return" ";" ;
-
 SWhile.     Stm   ::= "while" "(" Exp ")" Stm ;
-SDoWhile.   Stm   ::= "do" Stm "while" "(" Exp ")" ;
-SFor.       Stm   ::= "for" "(" Type Var ";" Exp ";" Exp ")" Stm ;
-
+SDoWhile.   Stm   ::= "do" Stm "while" "(" Exp ")" ";" ;
+SFor.       Stm   ::= "for" "(" Var ";" Exp ";" Exp ")" Stm ;
 SBlock.     Stm   ::= "{" [Stm] "}" ;
-
-SIfElse.    Stm   ::= "if" "(" Exp ")" Stm Else;
-
-STypedef.   Stm   ::= "typedef" Type Id ";" ;
-
-SStruct.    Stm   ::= "struct" Id "{" [Decl] "}" ;
-
-SEmtpy.     Stm   ::= ";" ;
+SIfElse.    Stm   ::= "if" "(" Exp ")" Stm Else ;
+STypedef.   Stm   ::= Typedef ;
+SStruct.    Stm   ::= Struct ;
 
 terminator Stm "" ;
 
@@ -69,30 +74,27 @@ EDouble.    Exp15  ::= Double ;
 EChar.      Exp15  ::= Char ;
 EString.    Exp15  ::= [String] ;
 
-separator nonempty String "";
-
-
 --// Qualified constants
-EConst.     Exp15  ::= [Id] ;
+EConst.     Exp15  ::= [List] ;
 
 --// Indexing and Function call
-EIndex.     Exp15  ::= Id "[" Exp "]" ;
-EApp.       Exp15  ::= Id "(" [Exp] ")" ;                        
+EIndex.     Exp15  ::= Exp15 "[" Exp "]" ;
+EApp.       Exp15  ::= Exp15 "(" [Exp] ")" ;                        
 
 --// Structure projection
 EProj1.     Exp14  ::= Exp14 "."  Exp15 ;
 EProj2.     Exp14  ::= Exp14 "->" Exp15 ;
 
---// In/Decrement, Dereferencing and Negation, unary plus and minus
-ELIncr.     Exp14  ::= Exp15 "++" ;
-ELDecr.     Exp14  ::= Exp15 "--" ;
+--// In/Decrement, Dereferencing and Negation
+ELIncr.     Exp14  ::= Exp14 "++" ;
+ELDecr.     Exp14  ::= Exp14 "--" ;
 
-ERIncr.     Exp13  ::= "++" Exp14 ;
-ERDecr.     Exp13  ::= "--" Exp14 ;
-ENeg.       Exp13  ::= "!"  Exp14 ;
-EDeref.     Exp13  ::= "*"  Exp14 ;
-EUPlus.     Exp13  ::= "+"  Exp14 ;
-EUMinus.    Exp13  ::= "-"  Exp14 ;
+ERIncr.     Exp13  ::= "++" Exp13 ;
+ERDecr.     Exp13  ::= "--" Exp13 ;
+ENeg.       Exp13  ::= "!"  Exp13 ;
+EDeref.     Exp13  ::= "*"  Exp13 ;
+EUPlus.     Exp13  ::= "+"  Exp13 ;
+EUMinus.    Exp13  ::= "-"  Exp13 ;
 
 --// Arithmetic operations
 EMod.       Exp12  ::= Exp12 "%" Exp13 ;
@@ -106,7 +108,6 @@ ELShift.    Exp10  ::= Exp10 "<<" Exp11 ;
 ERShift.    Exp10  ::= Exp10 ">>" Exp11 ;
 
 --// Comparison and Logical operations
-E3Way.      Exp9   ::= Exp9  "<=>" Exp10 ;
 ELt.        Exp9   ::= Exp9  "<"   Exp10 ;
 EGt.        Exp9   ::= Exp9  ">"   Exp10 ;
 ELtEq.      Exp9   ::= Exp9  "<="  Exp10 ;
@@ -123,7 +124,7 @@ EAss.       Exp2   ::= Exp3 "="  Exp2 ;
 
 --// Condition and Exception
 ECond.      Exp2   ::= Exp3 "?" Exp ":" Exp2 ;
-EThrow.     Exp    ::= "throw" Exp2 ;
+EThrow.     Exp    ::= "throw" Exp ;
 
 internal ETyped. Exp15 ::= "(" Exp ":" Type ")" ;
 
@@ -131,15 +132,21 @@ coercions Exp 15 ;
 
 separator Exp "," ;
 
+separator nonempty String "" ;
+
+rules List  ::= Id Temp ;
+
+separator nonempty List "::" ;
+
+rules Temp  ::= "<" [Type] ">" | "" ;
+
 ---------------------- Type rules -------------------------------
 
-rules Type  ::= "bool" | "int" | "double" | "void" | "char" | [Id] | Type "&" | [Id] "<" [Type] ">" ;
+rules Type  ::= "bool" | "int" | "double" | "void" | "char" | Type "&" | [List] ;
 
 separator nonempty Type "," ;
 
----------------------- Id rules ---------------------------------
-
-separator nonempty Id "::" ;
+---------------------- Id rules -------------------------------
 
 token Id (letter (letter | digit | '_')*) ;
 
