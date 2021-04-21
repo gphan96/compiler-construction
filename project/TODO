@@ -3,5 +3,5 @@ typedef (test3) DONE
 typedef (test6) DONE
 struct		 DONE
 top-level struct DONE
-top-level variable declarations and initializations
+top-level variable declarations and initializations (Run 71)
 
