@@ -41,7 +41,8 @@ rules Const  ::= "const" | "" ;
 VDecl1.  Var   ::= Type [IdIn] ;
 VDecl2.  Var   ::= "const" Type [IdIn] ;
 VDecl3.  Var   ::= "constinit" Const Type [IdIn] ;
---VDecl4.  Var   ::= "inline" Var ;
+VDecl4.  Var   ::= "const" "constinit" Type [IdIn] ;
+--VDecl5.  Var   ::= "inline" Var ;
 
 ---------------------- Stm rules -------------------------------
 
@@ -126,7 +127,7 @@ EAss.       Exp2   ::= Exp3 "="  Exp2 ;
 ECond.      Exp2   ::= Exp3 "?" Exp ":" Exp2 ;
 EThrow.     Exp    ::= "throw" Exp ;
 
-internal ETyped. Exp15 ::= "(" Exp ":" Type ")" ;
+--internal ETyped. Exp15 ::= "(" Exp ":" Type ")" ;
 
 coercions Exp 15 ;
 
