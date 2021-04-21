@@ -18,7 +18,7 @@ if [[ "$1" == "-all" ]]; then
 	# expected result of tests 
 	declare -A expectedRes=( ["1-hello.cc"]="$SUCCESS" ["2-greet.cc"]="$SUCCESS" ["3-med.cc"]="$SUCCESS" 
                              ["4-grade.cc"]="$SUCCESS" ["5-palin.cc"]="$SUCCESS" ["6-grammar.cc"]="$SUCCESS"
-                             ["7-variables.cc"]="$FAIL")
+                             ["7-variables.cc"]="$SUCCESS")
 
 	for test in ../../tests/*; do
 

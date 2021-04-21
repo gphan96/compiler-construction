@@ -9,6 +9,6 @@ bnfc -o bnfc -m CPP.cf
 Run 
 
 ```console
-./project/run_tests/run_tests -all
+./run_tests -all
 ```
 to run all tests in the test directory. **For additional tests** the expected output **has to be defined.**

@@ -10,7 +10,7 @@ using std;
 
 int main()
 {
-    // should fail
-    constinit const int;
+    // should parse according to DOMjudge test 68
+    const constinit int uninitialized;
     return 0;
 }
