@@ -6,4 +6,4 @@ top-level struct DONE
 top-level variable declarations and initializations DONE
 Check function definitions and comparison operators. (Run 89) DONE
 clean up and minimize grammar if possible 
-
+Dont allow for multiple "&" in variable declarations
