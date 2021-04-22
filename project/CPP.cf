@@ -81,15 +81,15 @@ EProj1.     Exp14  ::= Exp14 "."  Exp15 ;
 EProj2.     Exp14  ::= Exp14 "->" Exp15 ;
 
 --// In/Decrement, Dereferencing and Negation
-ELIncr.     Exp14  ::= Exp15 "++" ;
-ELDecr.     Exp14  ::= Exp15 "--" ;
+ELIncr.     Exp14  ::= Exp14 "++" ;
+ELDecr.     Exp14  ::= Exp14 "--" ;
 
-ERIncr.     Exp13  ::= "++" Exp14 ;
-ERDecr.     Exp13  ::= "--" Exp14 ;
-ENeg.       Exp13  ::= "!"  Exp14 ;
-EDeref.     Exp13  ::= "*"  Exp14 ;
-EUPlus.     Exp13  ::= "+"  Exp14 ;
-EUMinus.    Exp13  ::= "-"  Exp14 ;
+ERIncr.     Exp13  ::= "++" Exp13 ;
+ERDecr.     Exp13  ::= "--" Exp13 ;
+ENeg.       Exp13  ::= "!"  Exp13 ;
+EDeref.     Exp13  ::= "*"  Exp13 ;
+EUPlus.     Exp13  ::= "+"  Exp13 ;
+EUMinus.    Exp13  ::= "-"  Exp13 ;
 
 --// Arithmetic operations
 EMod.       Exp12  ::= Exp12 "%" Exp13 ;
@@ -119,8 +119,8 @@ EAssMinus.  Exp2   ::= Exp3 "-=" Exp2 ;
 EAss.       Exp2   ::= Exp3 "="  Exp2 ;
 
 --// Condition and Exception
-ECond.      Exp2   ::= Exp3 "?" Exp ":" Exp2 ;
-EThrow.     Exp    ::= "throw" Exp2 ;
+ECond.      Exp2   ::= Exp4 "?" Exp3 ":" Exp2 ;
+EThrow.     Exp    ::= "throw" Exp ;
 
 --internal ETyped. Exp15 ::= "(" Exp ":" Type ")" ;
 
