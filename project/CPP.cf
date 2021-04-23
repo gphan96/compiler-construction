@@ -51,13 +51,14 @@ SWhile.     Stm   ::= "while" "(" Exp ")" Stm ;
 SDoWhile.   Stm   ::= "do" Stm "while" "(" Exp ")" ";" ;
 SFor.       Stm   ::= "for" "(" Var ";" Exp ";" Exp ")" Stm ;
 SBlock.     Stm   ::= "{" [Stm] "}" ;
-SIfElse.    Stm   ::= "if" "(" Exp ")" Stm Else ;
+SIf.        Stm   ::= "if" "(" Exp ")" Stm ;
+SIfElse.    Stm   ::= "if" "(" Exp ")" Stm "else" Stm ;
 STypedef.   Stm   ::= Typedef ;
 SStruct.    Stm   ::= Struct ;
 
 terminator Stm "" ;
 
-rules Else  ::= "else" Stm | "" ;
+--rules Else  ::= "else" Stm | "" ;
 
 ---------------------- Exp rules -------------------------------
 
@@ -136,7 +137,7 @@ separator nonempty List "::" ;
 
 ---------------------- Type rules -------------------------------
 
-rules Type  ::= "bool" | "int" | "double" | "void" | "char" | Type "&" | [List] ;
+rules Type  ::= "bool" | "int" | "double" | "void" | "char" | Type"&" | [List] ;
 
 separator nonempty Type "," ;
 
@@ -147,3 +148,4 @@ token Id (letter (letter | digit | '_')*) ;
 comment "#" ;
 comment "//" ;
 comment "/*" "*/" ;
+
