@@ -2,10 +2,10 @@ PDefs.   Program  ::= [Def] ;
 
 ---------------------- Def rules ------------------------------
 
-DFun1.      Def   ::= "inline" Type Id FunBlock ;
-DFun2.      Def   ::= Type Id FunBlock ;
+DFun1.      Def   ::= "inline" TypeRef Id FunBlock ;
+DFun2.      Def   ::= TypeRef Id FunBlock ;
 DDecl.      Def   ::= Var ";" ;
-DUsing.     Def   ::= "using" Type ";" ;
+DUsing.     Def   ::= "using" [List] ";" ;
 DTypedef.   Def   ::= Typedef ;
 DStruct.    Def   ::= Struct ;
 
@@ -23,8 +23,8 @@ terminator Field "" ;
 
 ---------------------- Arg rules -------------------------------
 
-ADecl1.   Arg   ::= Const Type IdIn ;
-ADecl2.   Arg   ::= Const Type ;
+ADecl1.   Arg   ::= Const TypeRef IdIn ;
+ADecl2.   Arg   ::= Const TypeRef ;
  
 separator Arg "," ;
 
@@ -36,10 +36,10 @@ separator nonempty IdIn "," ;
 
 rules Const  ::= "const" | "" ;
 
-VDecl1.  Var   ::= Type [IdIn] ;
-VDecl2.  Var   ::= "const" Type [IdIn] ;
-VDecl3.  Var   ::= "constinit" Const Type [IdIn] ;
-VDecl4.  Var   ::= "const" "constinit" Type [IdIn] ;
+VDecl1.  Var   ::= TypeRef [IdIn] ;
+VDecl2.  Var   ::= "const" TypeRef [IdIn] ;
+VDecl3.  Var   ::= "constinit" Const TypeRef [IdIn] ;
+VDecl4.  Var   ::= "const" "constinit" TypeRef [IdIn] ;
 
 ---------------------- Stm rules -------------------------------
 
@@ -137,9 +137,11 @@ separator nonempty List "::" ;
 
 ---------------------- Type rules -------------------------------
 
-rules Type  ::= "bool" | "int" | "double" | "void" | "char" | Type"&" | [List] ;
+rules Type  ::= "bool" | "int" | "double" | "void" | "char" | [List] ;
 
 separator nonempty Type "," ;
+
+rules TypeRef ::= Type | Type "&" ;
 
 ---------------------- Id rules -------------------------------
 
@@ -148,4 +150,3 @@ token Id (letter (letter | digit | '_')*) ;
 comment "#" ;
 comment "//" ;
 comment "/*" "*/" ;
-
