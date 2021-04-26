@@ -74,8 +74,8 @@ EString.    Exp15  ::= [String] ;
 EConst.     Exp15  ::= [List] ;
 
 --// Indexing and Function call
-EIndex.     Exp15  ::= Exp15 "[" Exp "]" ;
-EApp.       Exp15  ::= Exp15 "(" [Exp] ")" ;                        
+EIndex.     Exp14  ::= Exp14 "[" Exp "]" ;
+EApp.       Exp14  ::= Exp14 "(" [Exp] ")" ;
 
 --// Structure projection
 EProj1.     Exp14  ::= Exp14 "."  Exp15 ;
@@ -121,7 +121,7 @@ EAss.       Exp2   ::= Exp3 "="  Exp2 ;
 
 --// Condition and Exception
 ECond.      Exp2   ::= Exp4 "?" Exp3 ":" Exp2 ;
-EThrow.     Exp    ::= "throw" Exp ;
+EThrow.     Exp1    ::= "throw" Exp1 ;
 
 --internal ETyped. Exp15 ::= "(" Exp ":" Type ")" ;
 
