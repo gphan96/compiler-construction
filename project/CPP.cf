@@ -15,11 +15,13 @@ rules FunBlock ::= "(" [Arg] ")" "{" [Stm] "}" | "(" [Arg] ")" ";" ;
 
 ---------------------- Typedef and Struct -----------------------
 
-rules Typedef  ::= "typedef" Type Id ";" ;
+rules Typedef  ::= "typedef" TypeRef Id ";" ;
 rules Struct   ::= "struct" Id "{" [Field] "}" ";" ;
 
-rules Field ::= Type Id ";" ;
+rules Field ::= Type [Id] ";" ;
 terminator Field "" ;
+
+separator nonempty Id "," ;
 
 ---------------------- Arg rules -------------------------------
 
@@ -131,7 +133,8 @@ separator Exp "," ;
 
 separator nonempty String "" ;
 
-rules List  ::= Id "<" [Type] ">" | Id ;
+LId.   List ::= Id ;
+LQC.   List ::= Id "<" [TypeRef] ">" ;
 
 separator nonempty List "::" ;
 
@@ -139,9 +142,9 @@ separator nonempty List "::" ;
 
 rules Type  ::= "bool" | "int" | "double" | "void" | "char" | [List] ;
 
-separator nonempty Type "," ;
+separator nonempty TypeRef "," ;
 
-rules TypeRef ::= Type | Type "&" ;
+rules TypeRef ::= Type | TypeRef "&" ;
 
 ---------------------- Id rules -------------------------------
 
