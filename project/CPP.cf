@@ -4,8 +4,8 @@ PDefs.   Program  ::= [Def] ;
 
 ---------------------- Def rules ------------------------------
 
-DFun1.      Def   ::= "inline" TypeRef Id FunBlock ;
-DFun2.      Def   ::= TypeRef Id FunBlock ;
+DFun1.      Def   ::= "inline" Type Id FunBlock ;
+DFun2.      Def   ::= Type Id FunBlock ;
 DDecl.      Def   ::= Var ";" ;
 DUsing.     Def   ::= "using" [List] ";" ;
 DTypedef.   Def   ::= Typedef ;
@@ -17,18 +17,19 @@ rules FunBlock ::= "(" [Arg] ")" "{" [Stm] "}" | "(" [Arg] ")" ";" ;
 
 ---------------------- Typedef and Struct -----------------------
 
-rules Typedef  ::= "typedef" TypeRef Id ";" ;
+rules Typedef  ::= "typedef" Type Id ";" ;
 rules Struct   ::= "struct" Id "{" [Field] "}" ";" ;
 
-rules Field ::= Type [Id] ";" ;
+--rules Field    ::= Type [Id] ";" ;
+rules Field    ::= Var ";" ;
 terminator Field "" ;
 
-separator nonempty Id "," ;
+--separator nonempty Id "," ;
 
 ---------------------- Arg rules -------------------------------
 
-ADecl1.   Arg   ::= Const TypeRef IdIn ;
-ADecl2.   Arg   ::= Const TypeRef ;
+ADecl1.   Arg   ::= Const Type IdIn ;
+ADecl2.   Arg   ::= Const Type ;
  
 separator Arg "," ;
 
@@ -40,10 +41,10 @@ separator nonempty IdIn "," ;
 
 rules Const  ::= "const" | "" ;
 
-VDecl1.  Var   ::= TypeRef [IdIn] ;
-VDecl2.  Var   ::= "const" TypeRef [IdIn] ;
-VDecl3.  Var   ::= "constinit" Const TypeRef [IdIn] ;
-VDecl4.  Var   ::= "const" "constinit" TypeRef [IdIn] ;
+VDecl1.  Var   ::= Type [IdIn] ;
+VDecl2.  Var   ::= "const" Type [IdIn] ;
+VDecl3.  Var   ::= "constinit" Const Type [IdIn] ;
+VDecl4.  Var   ::= "const" "constinit" Type [IdIn] ;
 
 ---------------------- Stm rules -------------------------------
 
@@ -124,8 +125,8 @@ EAssMinus.  Exp2   ::= Exp3 "-=" Exp2 ;
 EAss.       Exp2   ::= Exp3 "="  Exp2 ;
 
 --// Condition and Exception
-ECond.      Exp2   ::= Exp4 "?" Exp3 ":" Exp2 ;
-EThrow.     Exp1    ::= "throw" Exp1 ;
+ECond.      Exp2   ::= Exp3 "?" Exp2 ":" Exp1 ;
+EThrow.     Exp1   ::= "throw" Exp1 ;
 
 --internal ETyped. Exp15 ::= "(" Exp ":" Type ")" ;
 
@@ -136,17 +137,17 @@ separator Exp "," ;
 separator nonempty String "" ;
 
 LId.   List ::= Id ;
-LQC.   List ::= Id "<" [TypeRef] ">" ;
+LQC.   List ::= Id "<" [Type] ">" ;
 
 separator nonempty List "::" ;
 
 ---------------------- Type rules -------------------------------
 
-rules Type  ::= "bool" | "int" | "double" | "void" | "char" | [List] ;
+rules Type  ::= "bool" | "int" | "double" | "void" | "char" | Type "&" | [List] ;
 
-separator nonempty TypeRef "," ;
+separator nonempty Type "," ;
 
-rules TypeRef ::= Type | TypeRef "&" ;
+--rules TypeRef ::= Type | TypeRef "&" ;
 
 ---------------------- Id rules -------------------------------
 
