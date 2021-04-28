@@ -1,3 +1,5 @@
+entrypoints Program ;
+
 PDefs.   Program  ::= [Def] ;
 
 ---------------------- Def rules ------------------------------
