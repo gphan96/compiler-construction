@@ -20,11 +20,8 @@ rules FunBlock ::= "(" [Arg] ")" "{" [Stm] "}" | "(" [Arg] ")" ";" ;
 rules Typedef  ::= "typedef" Type Id ";" ;
 rules Struct   ::= "struct" Id "{" [Field] "}" ";" ;
 
---rules Field    ::= Type [Id] ";" ;
 rules Field    ::= Var ";" ;
 terminator Field "" ;
-
---separator nonempty Id "," ;
 
 ---------------------- Arg rules -------------------------------
 
@@ -62,8 +59,6 @@ STypedef.   Stm   ::= Typedef ;
 SStruct.    Stm   ::= Struct ;
 
 terminator Stm "" ;
-
---rules Else  ::= "else" Stm | "" ;
 
 ---------------------- Exp rules -------------------------------
 
@@ -128,8 +123,6 @@ EAss.       Exp2   ::= Exp3 "="  Exp2 ;
 ECond.      Exp2   ::= Exp3 "?" Exp2 ":" Exp1 ;
 EThrow.     Exp1   ::= "throw" Exp1 ;
 
---internal ETyped. Exp15 ::= "(" Exp ":" Type ")" ;
-
 coercions Exp 15 ;
 
 separator Exp "," ;
@@ -146,8 +139,6 @@ separator nonempty List "::" ;
 rules Type  ::= "bool" | "int" | "double" | "void" | "char" | Type "&" | [List] ;
 
 separator nonempty Type "," ;
-
---rules TypeRef ::= Type | TypeRef "&" ;
 
 ---------------------- Id rules -------------------------------
 
