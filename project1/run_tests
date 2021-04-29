@@ -20,7 +20,7 @@ if [[ "$1" == "-all" ]]; then
                              ["4-grade.cc"]="$SUCCESS" ["5-palin.cc"]="$SUCCESS" ["6-grammar.cc"]="$SUCCESS"
                              ["7-variables.cc"]="$SUCCESS")
 
-	for test in ../../tests/*; do
+	for test in tests/*; do
 
 		result=$( ./TestCPP "$test" 2>&1 ) 
 		fileName=$( basename "$test" )
