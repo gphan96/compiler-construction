@@ -34,7 +34,8 @@ main = do args <- getArgs
             [file] -> readFile file >>= process
             _      -> getContents >>= process
 
---typecheck :: Program -> Err () --main typecheck function
+typecheck :: Program -> Err () --main typecheck function
+typecheck _ = Bad "Not implemented" 
 
 
 --checkDef :: Env -> Def -> Err ()
