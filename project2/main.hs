@@ -54,8 +54,8 @@ typecheck _ = Bad "Not implemented"
 lookVar :: Env -> Id -> Either String Type
 lookVar [] (Id id)         = Bad (id ++ "undefined")
 lookVar (Block env:xs) id  = case lookVar env id of
-                             Bad _  -> lookVar xs id
-                             Ok t -> Ok t
+                             Bad _ -> lookVar xs id
+                             Ok t  -> Ok t
 lookVar (Var (i, t):xs) id = if i == id 
                              then Ok t 
                              else lookVar xs id
@@ -64,8 +64,8 @@ lookVar (x:xs) id          = lookVar xs id
 lookFun :: Env -> Id -> Either String Func
 lookFun [] (Id id)          = Bad (id ++ "undefined")
 lookFun (Block env:xs) id   = case lookFun env id of
-                              Bad _  -> lookFun xs id
-                              Ok f -> Ok f
+                              Bad _ -> lookFun xs id
+                              Ok f  -> Ok f
 lookFun (Func (i, f):xs) id = if i == id 
                               then Ok f 
                               else lookFun xs id
