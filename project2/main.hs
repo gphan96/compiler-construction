@@ -22,7 +22,11 @@ process s = case pProgram (myLexer s) of
             Bad err  -> do putStrLn "SYNTAX ERROR"
                            putStrLn err
                            exitFailure 
-            Ok  tree -> putStrLn "Type checker not implemented"
+            Ok  tree -> case typecheck tree of
+                        Bad err -> do putStrLn "TYPE ERROR"
+                                      putStrLn err
+                                      exitFailure
+                        Ok _ -> putStrLn "OK"
 
 main :: IO ()
 main = do args <- getArgs
