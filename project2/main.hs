@@ -18,3 +18,38 @@ main = do args <- getArgs
           case args of
             [file] -> readFile file >>= process
             _      -> getContents >>= process
+
+--typecheck :: Program -> Err () --main typecheck function
+
+
+--checkDef :: Env -> Def -> Err ()
+
+
+--checkStm
+
+
+--checkExp
+
+
+--infer
+
+-------------Auxiliary functions
+
+--lookVar
+
+
+--lookFun
+
+
+--updateVar
+
+
+--updateFun
+
+
+--newBlock Env -> Env
+
+
+--emptyEnv :: Env
+
+
