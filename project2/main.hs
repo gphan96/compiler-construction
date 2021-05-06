@@ -52,22 +52,22 @@ typecheck _ = Bad "Not implemented"
 ------------- Auxiliary functions -------------
 
 lookVar :: Env -> Id -> Either String Type
-lookVar [] (Id id)         = Left (id ++ "undefined")
+lookVar [] (Id id)         = Bad (id ++ "undefined")
 lookVar (Block env:xs) id  = case lookVar env id of
-                             Left _  -> lookVar xs id
-                             Right t -> Right t
+                             Bad _  -> lookVar xs id
+                             Ok t -> Ok t
 lookVar (Var (i, t):xs) id = if i == id 
-                             then Right t 
+                             then Ok t 
                              else lookVar xs id
 lookVar (x:xs) id          = lookVar xs id
 
 lookFun :: Env -> Id -> Either String Func
-lookFun [] (Id id)          = Left (id ++ "undefined")
+lookFun [] (Id id)          = Bad (id ++ "undefined")
 lookFun (Block env:xs) id   = case lookFun env id of
-                              Left _  -> lookFun xs id
-                              Right f -> Right f
+                              Bad _  -> lookFun xs id
+                              Ok f -> Ok f
 lookFun (Func (i, f):xs) id = if i == id 
-                              then Right f 
+                              then Ok f 
                               else lookFun xs id
 lookFun (x:xs) id           = lookFun xs id
 
