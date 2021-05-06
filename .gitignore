@@ -1,2 +1,15 @@
 # working directory for bnfc
 bnfc
+
+# bnfc generated files
+.stack-work
+AbsCPP.hs
+compiler
+compiler.cabal
+DocCPP.txt
+ErrM.hs
+LexCPP.*
+ParCPP.*
+PrintCPP.hs
+SkelCPP.hs
+TestCPP.hs
