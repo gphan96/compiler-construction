@@ -1,5 +1,6 @@
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
+import Data.Map (Map, insert, empty, lookup, member)
 
 import AbsCPP
 import LexCPP
@@ -10,10 +11,11 @@ import ErrM
 
 type Struct = [(Id, Type)]
 type Func = ([Type], Type)
+type Structs = Map Id Struct
 
-data Entry = Var (Id, Type) | Func (Id, Func) | Struct (Id, Struct) | Block Env
+data Entry = Var Type | Func Func
 
-type Env = [Entry]
+type Env = [Map Id Entry]
 
 ------------- Main functions -------------
 
@@ -35,53 +37,67 @@ main = do args <- getArgs
             _      -> getContents >>= process
 
 typecheck :: Program -> Err () --main typecheck function
-typecheck _ = Bad "Not implemented" 
+typecheck (PDefs defs) = case checkDefs emptyEnv defs of
+                         Bad err -> Bad err
+                         Ok _    -> Ok ()
+                   
+checkDefs :: Env -> [Def] -> Err Env
+checkDefs env [] = Ok env
+checkDefs env (def:xs) = case checkDef env def of
+                         Bad err -> Bad err
+                         Ok env2 -> checkDefs env2 xs
+
+checkDef :: Env -> Def -> Err Env
+checkDef env (DFun t id args stms) = case updateEnv env id $ Func (map extractType args, t) of 
+                                     Bad err -> Bad err
+                                     Ok env2 -> checkStms (newBlock env2) stms
+checkDef env (DStruct id field) = Bad "Struct not implemented"
+
+checkStms :: Env -> [Stm] -> Err Env
+checkStms env [] = Ok env
+checkStms env (stm:xs) = case checkStm env stm of
+                         Bad err -> Bad err
+                         Ok env2 -> checkStms env2 xs
+
+checkStm :: Env -> Stm -> Err Env
+checkStm env (SExp exp) = case checkExp env exp of
+                          Bad err -> Bad err
+                          Ok env2 -> Ok env2
+checkStm env (SDecls t idins) = Bad "checkStm not implemented"
+checkStm env (SReturn exp) = Bad "checkStm not implemented"
+checkStm env SReturnV = Bad "checkStm not implemented"
+checkStm env (SWhile exp stm) = Bad "checkStm not implemented" --Task 2
+checkStm env (SDoWhile stm exp) = Bad "checkStm not implemented"
+checkStm env (SFor exp1 exp2 exp3 stm) = Bad "checkStm not implemented" --Task 2
+checkStm env (SBlock stms) = Bad "checkStm not implemented" --Task 2
+checkStm env (SIfElse exp stm1 stm2) = Bad "checkStm not implemented" --Task 2
 
 
---checkDef :: Env -> Def -> Err ()
-
-
---checkStm
-
-
---checkExp
+checkExp :: Env -> Exp -> Err Env
+checkExp _ _ = Bad "checkExp not implemented"
 
 
 --infer
 
 ------------- Auxiliary functions -------------
 
-lookVar :: Env -> Id -> Err Type
-lookVar [] (Id id)         = Bad (id ++ "undefined")
-lookVar (Block env:xs) id  = case lookVar env id of
-                             Bad _ -> lookVar xs id
-                             Ok t  -> Ok t
-lookVar (Var (i, t):xs) id = if i == id 
-                             then Ok t 
-                             else lookVar xs id
-lookVar (x:xs) id          = lookVar xs id
+extractType :: Arg -> Type
+extractType (ADecl t _) = t
 
-lookFun :: Env -> Id -> Err Func
-lookFun [] (Id id)          = Bad (id ++ "undefined")
-lookFun (Block env:xs) id   = case lookFun env id of
-                              Bad _ -> lookFun xs id
-                              Ok f  -> Ok f
-lookFun (Func (i, f):xs) id = if i == id 
-                              then Ok f 
-                              else lookFun xs id
-lookFun (x:xs) id           = lookFun xs id
+lookupEnv :: Env -> Id -> Err Entry
+lookupEnv [] (Id id)   = Bad $ id ++ " undefined"
+lookupEnv (x:xs) id  = case Data.Map.lookup id x of
+                         Just entry -> Ok entry
+                         Nothing    -> lookupEnv xs id
 
-updateVar :: Env -> Id -> Type -> Env
-updateVar (Block env:xs) id t = updateVar env id t ++ xs
-updateVar env id t            = [Var (id, t)] ++ env
-
-updateFun :: Env -> Id -> Func -> Env
-updateFun (Block env:xs) id f = updateFun env id f ++ xs
-updateFun env id f            = [Func (id, f)] ++ env
+updateEnv :: Env -> Id -> Entry -> Err Env
+updateEnv (x:xs) (Id id) entry = if member (Id id) x
+                            then Bad $ id ++ " already declared"
+                            else Ok $ [insert (Id id) entry x] ++ xs
 
 -- Building the stack from front to back. The first element is always on top of the stack.
 newBlock :: Env -> Env
-newBlock env = [Block []] ++ env 
+newBlock env = [empty] ++ env
 
 emptyEnv :: Env
-emptyEnv = []
+emptyEnv = [empty]

@@ -17,4 +17,5 @@ executable compiler
   build-depends:
       base                 >= 4.7 && <5
     , array
+    , containers
   hs-source-dirs:      .
