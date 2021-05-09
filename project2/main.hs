@@ -51,7 +51,7 @@ typecheck _ = Bad "Not implemented"
 
 ------------- Auxiliary functions -------------
 
-lookVar :: Env -> Id -> Either String Type
+lookVar :: Env -> Id -> Err Type
 lookVar [] (Id id)         = Bad (id ++ "undefined")
 lookVar (Block env:xs) id  = case lookVar env id of
                              Bad _ -> lookVar xs id
@@ -61,7 +61,7 @@ lookVar (Var (i, t):xs) id = if i == id
                              else lookVar xs id
 lookVar (x:xs) id          = lookVar xs id
 
-lookFun :: Env -> Id -> Either String Func
+lookFun :: Env -> Id -> Err Func
 lookFun [] (Id id)          = Bad (id ++ "undefined")
 lookFun (Block env:xs) id   = case lookFun env id of
                               Bad _ -> lookFun xs id
