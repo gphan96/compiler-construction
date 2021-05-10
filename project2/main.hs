@@ -73,11 +73,11 @@ checkStm env (SBlock stms) = Bad "checkStm not implemented" --Task 2
 checkStm env (SIfElse exp stm1 stm2) = Bad "checkStm not implemented" --Task 2
 
 
-checkExp :: Env -> Exp -> Err Env
+checkExp :: Env -> Exp -> Type -> Err ()
 checkExp _ _ = Bad "checkExp not implemented"
 
 
---infer
+inferExp :: Env -> Exp -> Err Type
 
 ------------- Auxiliary functions -------------
 
