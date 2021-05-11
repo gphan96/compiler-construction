@@ -60,10 +60,9 @@ checkStms env (stm:xs) = case checkStm env stm of
                          Ok env2 -> checkStms env2 xs
 
 checkStm :: Env -> Stm -> Err Env
-checkStm env (SExp exp) = case checkExp env exp of
-                          Bad err -> Bad err
-                          Ok env2 -> Ok env2
-checkStm env (SDecls t idins) = Bad "checkStm not implemented"
+-- not sure for which type to check this Exp. Maybe just call inferExp and if it fails return an error ?!
+checkStm env (SExp exp) = Bad "checkStm not implemented" 
+checkStm env (SDecls t idins) = checkIdins env t idins
 checkStm env (SReturn exp) = Bad "checkStm not implemented"
 checkStm env SReturnV = Bad "checkStm not implemented"
 checkStm env (SWhile exp stm) = Bad "checkStm not implemented" --Task 2
@@ -72,12 +71,24 @@ checkStm env (SFor exp1 exp2 exp3 stm) = Bad "checkStm not implemented" --Task 2
 checkStm env (SBlock stms) = Bad "checkStm not implemented" --Task 2
 checkStm env (SIfElse exp stm1 stm2) = Bad "checkStm not implemented" --Task 2
 
+checkIdins :: Env -> Type -> [IdIn] -> Err Env
+checkIdins env _ []        = Ok env
+checkIdins env t (idin:xs) = case checkIdin env t idin of
+                             Bad err -> Bad err
+                             Ok env2 -> checkIdins env2 t xs
+
+checkIdin :: Env -> Type -> IdIn -> Err Env
+checkIdin _ (Type_void) _       = Bad "Declarations can't be of type void"
+checkIdin env t (IdNoInit id)   = updateEnv env id $ Var t
+checkIdin env t (IdInit id exp) = case checkExp env exp t of
+                                  Bad err -> Bad err
+                                  Ok _    -> updateEnv env id $ Var t
 
 checkExp :: Env -> Exp -> Type -> Err ()
-checkExp _ _ = Bad "checkExp not implemented"
+checkExp _ _ _ = Bad "checkExp not implemented"
 
 
-inferExp :: Env -> Exp -> Err Type
+--inferExp :: Env -> Exp -> Err Type
 
 ------------- Auxiliary functions -------------
 
@@ -85,17 +96,17 @@ extractType :: Arg -> Type
 extractType (ADecl t _) = t
 
 lookupEnv :: Env -> Id -> Err Entry
-lookupEnv [] (Id id)   = Bad $ id ++ " undefined"
+lookupEnv [] (Id id) = Bad $ id ++ " undefined"
 lookupEnv (x:xs) id  = case Data.Map.lookup id x of
                          Just entry -> Ok entry
                          Nothing    -> lookupEnv xs id
 
 updateEnv :: Env -> Id -> Entry -> Err Env
 updateEnv (x:xs) (Id id) entry = if member (Id id) x
-                            then Bad $ id ++ " already declared"
+                            then Bad $ "Variable " ++ id ++ " already declared in this block"
                             else Ok $ [insert (Id id) entry x] ++ xs
 
--- Building the stack from front to back. The first element is always on top of the stack.
+-- Building the stack from front to back. The first element of the list is always the top element of the stack.
 newBlock :: Env -> Env
 newBlock env = [empty] ++ env
 
