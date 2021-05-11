@@ -2,13 +2,13 @@ typecheck functions
 auxiliary functions
 
 Noah:
-do-while, +, <, return, retunv, block, eq, ne, and, or
+do-while, +, <, return, returnv, block, eq, ne, and, or
 
 Phan:
-while, -, >, true, false, int double, assignments, ternary
+while, -, >, true, false, int, double, assignments, ternary
 
 Leonard: 
-for, *, <=, Decls, function call, twc
+for, *, <=, Decls, function call, twc --- DONE
 
 Nam:
 if, /, >=, increment, decrement, increment backwards, decrement backwards, unary plus/minus
