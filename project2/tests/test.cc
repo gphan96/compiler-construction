@@ -4,5 +4,6 @@ void f(bool x, double y) {
 
 int main() {
   	int j, i;
-	f(3 <= 4, 4.5);
+
+	for(3 * 4; 5 <= 6; 7 <=> 8) f(3 <= 4, 4.5);
 }

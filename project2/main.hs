@@ -81,7 +81,13 @@ checkStm env (SReturn exp) = Bad "checkStm not implemented"
 checkStm env SReturnV = Bad "checkStm not implemented"
 checkStm env (SWhile exp stm) = Bad "checkStm not implemented" --Task 2
 checkStm env (SDoWhile stm exp) = Bad "checkStm not implemented"
-checkStm env (SFor exp1 exp2 exp3 stm) = Bad "checkStm not implemented" --Task 2
+checkStm env (SFor exp1 exp2 exp3 stm) = case inferExp env exp1 of
+                                         Bad err -> Bad err
+                                         Ok _    -> case checkExp env exp2 Type_bool of
+                                                    Bad err -> Bad err
+                                                    Ok _    -> case inferExp env exp3 of
+                                                               Bad err -> Bad err
+                                                               Ok _    -> checkStm env stm
 checkStm env (SBlock stms) = Bad "checkStm not implemented" --Task 2
 checkStm env (SIfElse exp stm1 stm2) = Bad "checkStm not implemented" --Task 2
 
