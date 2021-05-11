@@ -98,10 +98,42 @@ checkIdin env t (IdInit id exp)            = case checkExp env exp t of
                                              Ok _    -> updateEnv env id $ Var t
 
 checkExp :: Env -> Exp -> Type -> Err ()
-checkExp _ _ _ = Bad "checkExp not implemented"
+checkExp env exp t = case inferExp env exp of
+                     Bad err -> Bad err
+                     Ok t2   -> if t2 == t
+                                then Ok ()
+                                else Bad $ "Expression not of type " ++ (show t)
 
 
---inferExp :: Env -> Exp -> Err Type
+inferExp :: Env -> Exp -> Err Type
+inferExp env ETrue = Bad "inferExp not implemented"
+inferExp env EFalse = Bad "inferExp not implemented"
+inferExp env (EInt int) = Bad "inferExp not implemented"
+inferExp env (EDouble double) = Bad "inferExp not implemented"
+inferExp env (EId id) = Bad "inferExp not implemented"
+inferExp env (EApp id exps) = Bad "inferExp not implemented"
+inferExp env (EProj exp id) = Bad "inferExp not implemented"
+inferExp env (EPIncr exp) = Bad "inferExp not implemented"
+inferExp env (EPDecr exp) = Bad "inferExp not implemented"
+inferExp env (EIncr exp) = Bad "inferExp not implemented"
+inferExp env (EDecr exp )= Bad "inferExp not implemented"
+inferExp env (EUPlus exp) = Bad "inferExp not implemented"
+inferExp env (EUMinus exp) = Bad "inferExp not implemented"
+inferExp env (ETimes exp exp2) = Bad "inferExp not implemented"
+inferExp env (EDiv exp exp2) = Bad "inferExp not implemented"
+inferExp env (EPlus exp exp2) = Bad "inferExp not implemented"
+inferExp env (EMinus exp exp2) = Bad "inferExp not implemented"
+inferExp env (ETwc exp exp2) = Bad "inferExp not implemented"
+inferExp env (ELt exp exp2) = Bad "inferExp not implemented"
+inferExp env (EGt exp exp2) = Bad "inferExp not implemented"
+inferExp env (ELtEq exp exp2) = Bad "inferExp not implemented"
+inferExp env (EGtEq exp exp2) = Bad "inferExp not implemented"
+inferExp env (EEq exp exp2) = Bad "inferExp not implemented"
+inferExp env (ENEq exp exp2) = Bad "inferExp not implemented"
+inferExp env (EAnd exp exp2) = Bad "inferExp not implemented"
+inferExp env (EOr exp exp2) = Bad "inferExp not implemented"
+inferExp env (EAss exp exp2) = Bad "inferExp not implemented"
+inferExp env (ECond exp exp2 exp3) = Bad "inferExp not implemented"
 
 ------------- Auxiliary functions -------------
 
