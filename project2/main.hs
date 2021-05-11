@@ -73,7 +73,9 @@ checkStms env (stm:xs) = case checkStm env stm of
 
 checkStm :: Env -> Stm -> Err Env
 -- not sure for which type to check this Exp. Maybe just call inferExp and if it fails return an error ?!
-checkStm env (SExp exp) = Bad "checkStm not implemented" 
+checkStm env (SExp exp) = case inferExp env exp of
+                          Bad err -> Bad err
+                          Ok _    -> Ok env
 checkStm env (SDecls t idins) = checkIdins env t idins
 checkStm env (SReturn exp) = Bad "checkStm not implemented"
 checkStm env SReturnV = Bad "checkStm not implemented"
@@ -97,21 +99,35 @@ checkIdin env t (IdInit id exp)            = case checkExp env exp t of
                                              Bad err -> Bad err
                                              Ok _    -> updateEnv env id $ Var t
 
+
+checkExps :: Env -> [Exp]-> [Type] -> Err ()
+checkExps env [] [] = Ok ()
+checkExps env (exp:xs) (t:ys) = case checkExp env exp t of
+                                Bad err -> Bad err
+                                Ok _    -> checkExps env xs ys
+
 checkExp :: Env -> Exp -> Type -> Err ()
 checkExp env exp t = case inferExp env exp of
                      Bad err -> Bad err
                      Ok t2   -> if t2 == t
                                 then Ok ()
-                                else Bad $ "Expression not of type " ++ (show t)
+                                else Bad $ "Expected: " ++ (show t) ++ " , but received: " ++ (show t2)
 
 
 inferExp :: Env -> Exp -> Err Type
-inferExp env ETrue = Bad "inferExp not implemented"
-inferExp env EFalse = Bad "inferExp not implemented"
-inferExp env (EInt int) = Bad "inferExp not implemented"
-inferExp env (EDouble double) = Bad "inferExp not implemented"
-inferExp env (EId id) = Bad "inferExp not implemented"
-inferExp env (EApp id exps) = Bad "inferExp not implemented"
+inferExp env ETrue = Ok Type_bool
+inferExp env EFalse = Ok Type_bool
+inferExp env (EInt int) = Ok Type_int
+inferExp env (EDouble double) = Ok Type_double
+inferExp env (EId id) = Ok $ TypeId id
+inferExp (env:xs) (EApp (Id id) exps) = case lookupEnv xs (Id id) of
+                                        Bad err -> Bad err
+                                        Ok (Var _) -> Bad $ id ++ " is not a function" 
+                                        Ok (Func (args, ret)) -> if length args /= length exps
+                                                                 then Bad $ "Expected " ++ (show $ length args) ++ " arguments, but received " ++ (show $ length exps) ++ " instead"
+                                                                 else case checkExps (env:xs) exps args of
+                                                                      Bad err -> Bad err
+                                                                      Ok _    -> Ok ret                                                            
 inferExp env (EProj exp id) = Bad "inferExp not implemented"
 inferExp env (EPIncr exp) = Bad "inferExp not implemented"
 inferExp env (EPDecr exp) = Bad "inferExp not implemented"
