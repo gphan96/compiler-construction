@@ -139,7 +139,11 @@ inferExp env (ETimes exp exp2) = Bad "inferExp not implemented"
 inferExp env (EDiv exp exp2) = Bad "inferExp not implemented"
 inferExp env (EPlus exp exp2) = Bad "inferExp not implemented"
 inferExp env (EMinus exp exp2) = Bad "inferExp not implemented"
-inferExp env (ETwc exp exp2) = Bad "inferExp not implemented"
+inferExp env (ETwc exp exp2) = case checkExps env [exp, exp2] [Type_int, Type_int] of
+                               Ok _  -> Ok Type_int
+                               Bad _ -> case checkExps env [exp, exp2] [Type_double, Type_double] of
+                                        Bad err -> Bad err
+                                        Ok _    -> Ok Type_int
 inferExp env (ELt exp exp2) = Bad "inferExp not implemented"
 inferExp env (EGt exp exp2) = Bad "inferExp not implemented"
 inferExp env (ELtEq exp exp2) = Bad "inferExp not implemented"

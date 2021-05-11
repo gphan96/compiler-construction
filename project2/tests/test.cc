@@ -4,5 +4,5 @@ void f(int x, double y) {
 
 int main() {
   	int j, i;
-	f(3, 4.5);
+	f(3.2 <=> 4.3, 4.5);
 }
