@@ -50,8 +50,20 @@ checkDefs env (def:xs) = case checkDef env def of
 checkDef :: Env -> Def -> Err Env
 checkDef env (DFun t id args stms) = case updateEnv env id $ Func (map extractType args, t) of 
                                      Bad err -> Bad err
-                                     Ok env2 -> checkStms (newBlock env2) stms
+                                     Ok env2 -> case checkArgs (newBlock env2) args of
+                                                Bad err -> Bad err
+                                                Ok env3 -> checkStms env3 stms
 checkDef env (DStruct id field) = Bad "Struct not implemented"
+
+checkArgs :: Env -> [Arg] -> Err Env
+checkArgs env []       = Ok env
+checkArgs env (arg:xs) = case checkArg env arg of
+                         Bad err -> Bad err
+                         Ok env2 -> checkArgs env2 xs
+
+checkArg :: Env -> Arg -> Err Env
+checkArg _ (ADecl Type_void (Id id)) = Bad $ "Arguments can't be of type void, but " ++ id ++ " is"
+checkArg env (ADecl t id)            = updateEnv env id $ Var t
 
 checkStms :: Env -> [Stm] -> Err Env
 checkStms env [] = Ok env
@@ -78,11 +90,12 @@ checkIdins env t (idin:xs) = case checkIdin env t idin of
                              Ok env2 -> checkIdins env2 t xs
 
 checkIdin :: Env -> Type -> IdIn -> Err Env
-checkIdin _ (Type_void) _       = Bad "Declarations can't be of type void"
-checkIdin env t (IdNoInit id)   = updateEnv env id $ Var t
-checkIdin env t (IdInit id exp) = case checkExp env exp t of
-                                  Bad err -> Bad err
-                                  Ok _    -> updateEnv env id $ Var t
+checkIdin _ (Type_void) (IdNoInit (Id id)) = Bad $ "Declarations can't be of type void, but " ++ id ++ " is"
+checkIdin _ (Type_void) (IdInit (Id id) _) = Bad $ "Declarations can't be of type void, but " ++ id ++ " is"
+checkIdin env t (IdNoInit id)              = updateEnv env id $ Var t
+checkIdin env t (IdInit id exp)            = case checkExp env exp t of
+                                             Bad err -> Bad err
+                                             Ok _    -> updateEnv env id $ Var t
 
 checkExp :: Env -> Exp -> Type -> Err ()
 checkExp _ _ _ = Bad "checkExp not implemented"
