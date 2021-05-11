@@ -150,7 +150,11 @@ inferExp env (ETwc exp exp2) = case checkExps env [exp, exp2] [Type_int, Type_in
                                         Bad err -> Bad err
 inferExp env (ELt exp exp2) = Bad "inferExp not implemented"
 inferExp env (EGt exp exp2) = Bad "inferExp not implemented"
-inferExp env (ELtEq exp exp2) = Bad "inferExp not implemented"
+inferExp env (ELtEq exp exp2) = case checkExps env [exp, exp2] [Type_int, Type_int] of
+                                Ok _  -> Ok Type_bool
+                                Bad _ -> case checkExps env [exp, exp2] [Type_double, Type_double] of
+                                         Ok _    -> Ok Type_bool
+                                         Bad err -> Bad err
 inferExp env (EGtEq exp exp2) = Bad "inferExp not implemented"
 inferExp env (EEq exp exp2) = Bad "inferExp not implemented"
 inferExp env (ENEq exp exp2) = Bad "inferExp not implemented"
