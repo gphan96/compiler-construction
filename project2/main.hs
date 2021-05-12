@@ -1,11 +1,14 @@
 import System.Environment (getArgs)
 import System.Exit (exitFailure)
-import Data.Map (Map, insert, empty, lookup, member)
+
+import qualified Data.Map as Map
+import Data.Map (Map)
 
 import AbsCPP
 import LexCPP
 import ParCPP
 import ErrM
+import PrintCPP
 
 ------------- Type definitions -------------
 
@@ -79,7 +82,9 @@ checkStm env (SExp exp) = case inferExp env exp of
 checkStm env (SDecls t idins) = checkIdins env t idins
 checkStm env (SReturn exp) = Bad "checkStm not implemented"
 checkStm env SReturnV = Bad "checkStm not implemented"
-checkStm env (SWhile exp stm) = Bad "checkStm not implemented" --Task 2
+checkStm env (SWhile exp stm) = do                       --Task 2
+   checkExp env exp Type_bool
+   checkStm env stm
 checkStm env (SDoWhile stm exp) = Bad "checkStm not implemented"
 checkStm env (SFor exp1 exp2 exp3 stm) = case inferExp env exp1 of
                                          Bad err -> Bad err
@@ -89,7 +94,10 @@ checkStm env (SFor exp1 exp2 exp3 stm) = case inferExp env exp1 of
                                                                Bad err -> Bad err
                                                                Ok _    -> checkStm env stm
 checkStm env (SBlock stms) = Bad "checkStm not implemented" --Task 2
-checkStm env (SIfElse exp stm1 stm2) = Bad "checkStm not implemented" --Task 2
+checkStm env (SIfElse exp stm1 stm2) = do        --Task 2
+   checkExp env exp Type_bool
+   checkStm env stm1
+   checkStm env stm2
 
 checkIdins :: Env -> Type -> [IdIn] -> Err Env
 checkIdins env _ []        = Ok env
@@ -112,11 +120,11 @@ checkExps env (exp:xs) (t:ys) = case checkExp env exp t of
                                 Bad err -> Bad err
                                 Ok _    -> checkExps env xs ys
 
-checkExp :: Env -> Exp -> Type -> Err ()
+checkExp :: Env -> Exp -> Type -> Err Type
 checkExp env exp t = case inferExp env exp of
                      Bad err -> Bad err
                      Ok t2   -> if t2 == t
-                                then Ok ()
+                                then Ok t
                                 else Bad $ "Expected: " ++ (show t) ++ " , but received: " ++ (show t2)
 
 
@@ -135,39 +143,69 @@ inferExp (env:xs) (EApp (Id id) exps) = case lookupEnv xs (Id id) of
                                                                       Bad err -> Bad err
                                                                       Ok _    -> Ok ret                                                            
 inferExp env (EProj exp id) = Bad "inferExp not implemented"
-inferExp env (EPIncr exp) = Bad "inferExp not implemented"
-inferExp env (EPDecr exp) = Bad "inferExp not implemented"
-inferExp env (EIncr exp) = Bad "inferExp not implemented"
-inferExp env (EDecr exp )= Bad "inferExp not implemented"
-inferExp env (EUPlus exp) = Bad "inferExp not implemented"
-inferExp env (EUMinus exp) = Bad "inferExp not implemented"
-inferExp env (ETimes exp exp2) = case checkExps env [exp, exp2] [Type_int, Type_int] of
-                                 Ok _  -> Ok Type_int
-                                 Bad _ -> case checkExps env [exp, exp2] [Type_double, Type_double] of
-                                          Ok _    -> Ok Type_double
-                                          Bad err -> Bad err
-inferExp env (EDiv exp exp2) = Bad "inferExp not implemented"
-inferExp env (EPlus exp exp2) = Bad "inferExp not implemented"
-inferExp env (EMinus exp exp2) = Bad "inferExp not implemented"
-inferExp env (ETwc exp exp2) = case checkExps env [exp, exp2] [Type_int, Type_int] of
-                               Ok _  -> Ok Type_int
-                               Bad _ -> case checkExps env [exp, exp2] [Type_double, Type_double] of
-                                        Ok _    -> Ok Type_int
-                                        Bad err -> Bad err
-inferExp env (ELt exp exp2) = Bad "inferExp not implemented"
-inferExp env (EGt exp exp2) = Bad "inferExp not implemented"
-inferExp env (ELtEq exp exp2) = case checkExps env [exp, exp2] [Type_int, Type_int] of
-                                Ok _  -> Ok Type_bool
-                                Bad _ -> case checkExps env [exp, exp2] [Type_double, Type_double] of
-                                         Ok _    -> Ok Type_bool
-                                         Bad err -> Bad err
-inferExp env (EGtEq exp exp2) = Bad "inferExp not implemented"
-inferExp env (EEq exp exp2) = Bad "inferExp not implemented"
-inferExp env (ENEq exp exp2) = Bad "inferExp not implemented"
-inferExp env (EAnd exp exp2) = Bad "inferExp not implemented"
-inferExp env (EOr exp exp2) = Bad "inferExp not implemented"
-inferExp env (EAss exp exp2) = Bad "inferExp not implemented"
-inferExp env (ECond exp exp2 exp3) = Bad "inferExp not implemented"
+
+inferExp env (EPIncr exp) = findTypeNum env exp
+inferExp env (EPDecr exp) = findTypeNum env exp
+inferExp env (EIncr exp) = findTypeNum env exp
+inferExp env (EDecr exp )= findTypeNum env exp
+inferExp env (EUPlus exp) = findTypeNum env exp
+inferExp env (EUMinus exp) = findTypeNum env exp
+
+inferExp env (ETimes exp1 exp2) = inferArithmBin env [Type_int, Type_double] exp1 exp2
+   -- case checkExps env [exp, exp2] [Type_int, Type_int] of
+   --                               Ok _  -> Ok Type_int
+   --                               Bad _ -> case checkExps env [exp, exp2] [Type_double, Type_double] of
+   --                                        Ok _    -> Ok Type_double
+   --                                        Bad err -> Bad err
+inferExp env (EDiv exp1 exp2) = inferArithmBin env [Type_int, Type_double] exp1 exp2
+inferExp env (EPlus exp1 exp2) = inferArithmBin env [Type_int, Type_double] exp1 exp2
+inferExp env (EMinus exp1 exp2) = inferArithmBin env [Type_int, Type_double] exp1 exp2
+
+inferExp env (ETwc exp1 exp2) = returnComparison env Type_int exp1 exp2
+   -- case checkExps env [exp, exp2] [Type_int, Type_int] of
+   --                             Ok _  -> Ok Type_int
+   --                             Bad _ -> case checkExps env [exp, exp2] [Type_double, Type_double] of
+   --                                      Ok _    -> Ok Type_int
+   --                                      Bad err -> Bad err
+inferExp env (ELt exp1 exp2) = returnComparison env Type_bool exp1 exp2
+inferExp env (EGt exp1 exp2) = returnComparison env Type_bool exp1 exp2
+inferExp env (ELtEq exp1 exp2) = returnComparison env Type_bool exp1 exp2
+   -- case checkExps env [exp, exp2] [Type_int, Type_int] of
+   --                              Ok _  -> Ok Type_bool
+   --                              Bad _ -> case checkExps env [exp, exp2] [Type_double, Type_double] of
+   --                                       Ok _    -> Ok Type_bool
+   --                                       Bad err -> Bad err
+inferExp env (EGtEq exp1 exp2) = returnComparison env Type_bool exp1 exp2
+inferExp env (EEq exp1 exp2) = returnComparison env Type_bool exp1 exp2
+inferExp env (ENEq exp1 exp2) = returnComparison env Type_bool exp1 exp2
+inferExp env (EAnd exp1 exp2) = inferArithmBin env [Type_bool] exp1 exp2
+inferExp env (EOr exp1 exp2) = inferArithmBin env [Type_bool] exp1 exp2
+
+inferExp env (EAss exp1 exp2) = do typ1 <- inferExp env exp1
+                                   checkExp env exp2 typ1
+inferExp env (ECond exp1 exp2 exp3) = do checkExp env exp1 Type_bool
+                                         inferArithmBin env [Type_int, Type_double, Type_bool] exp1 exp2
+
+
+findTypeNum :: Env -> Exp -> Err Type
+findTypeNum env exp = do typ <- inferExp env exp
+                         if typ `elem` [Type_int, Type_double]
+                         then return typ
+                         else Bad $ "Type error of expression " ++ printTree exp
+
+inferArithmBin :: Env -> [Type] -> Exp -> Exp -> Err Type
+inferArithmBin env typs exp1 exp2 = do
+    typ1 <- inferExp env exp1
+    if typ1 `elem` typs then
+        checkExp env exp2 typ1
+    else Bad $ "Type error of expression " ++ printTree exp1
+
+returnComparison :: Env -> Type -> Exp -> Exp -> Err Type
+returnComparison env r_typ exp1 exp2 = do
+   let typs = [Type_int, Type_double]
+   case inferArithmBin env typs exp1 exp2 of
+      Ok _  -> return r_typ
+      Bad _ -> Bad $ printTree exp2 ++ " should have type of " ++ printTree exp1
 
 ------------- Auxiliary functions -------------
 
@@ -176,18 +214,18 @@ extractType (ADecl t _) = t
 
 lookupEnv :: Env -> Id -> Err Entry
 lookupEnv [] (Id id) = Bad $ id ++ " undefined"
-lookupEnv (x:xs) id  = case Data.Map.lookup id x of
+lookupEnv (x:xs) id  = case Map.lookup id x of
                          Just entry -> Ok entry
                          Nothing    -> lookupEnv xs id
 
 updateEnv :: Env -> Id -> Entry -> Err Env
-updateEnv (x:xs) (Id id) entry = if member (Id id) x
+updateEnv (x:xs) (Id id) entry = if Map.member (Id id) x
                             then Bad $ "Variable " ++ id ++ " already declared in this block"
-                            else Ok $ [insert (Id id) entry x] ++ xs
+                            else Ok $ Map.insert (Id id) entry x :xs
 
 -- Building the stack from front to back. The first element of the list is always the top element of the stack.
 newBlock :: Env -> Env
-newBlock env = [empty] ++ env
+newBlock env = Map.empty:env
 
 emptyEnv :: Env
-emptyEnv = [empty]
+emptyEnv = [Map.empty]

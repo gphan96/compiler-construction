@@ -4,14 +4,14 @@ auxiliary functions
 Noah:
 do-while, +, <, return, returnv, block, eq, ne, and, or
 
-Phan:
-while, -, >, true, false, int, double, assignments, ternary
+Giang:
+while, -, >, true, false, int, double, assignments, ternary --- DONE
 
 Leonard: 
 for, *, <=, Decls, function call, twc --- DONE
 
 Nam:
-if, /, >=, increment, decrement, increment backwards, decrement backwards, unary plus/minus
+if, /, >=, increment, decrement, increment backwards, decrement backwards, unary plus/minus --- DONE
 
 Later:
 Struct, projection
