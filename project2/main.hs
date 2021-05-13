@@ -3,6 +3,7 @@ import System.Exit (exitFailure)
 
 import qualified Data.Map as Map
 import Data.Map (Map)
+import Data.List (nub, find)
 
 import AbsCPP
 import LexCPP
@@ -14,11 +15,10 @@ import PrintCPP
 
 type Struct = [(Id, Type)]
 type Func = ([Type], Type)
-type Structs = Map Id Struct
 
 data Entry = Var Type | Func Func deriving Show
 
-type Env = [Map Id Entry]
+type Env = ([Map Id Entry], Map Id Struct)
 
 ------------- Main functions -------------
 
@@ -51,12 +51,42 @@ checkDefs env (def:xs) = case checkDef env def of
                          Ok env2 -> checkDefs env2 xs
 
 checkDef :: Env -> Def -> Err Env
-checkDef env (DFun t id args stms) = case updateEnv env id $ Func (map extractType args, t) of 
-                                     Bad err -> Bad err
-                                     Ok env2 -> case checkArgs (newBlock env2) args of
-                                                Bad err -> Bad err
-                                                Ok env3 -> checkStms env3 stms
-checkDef env (DStruct id field) = Bad "Struct not implemented"
+checkDef env (DFun t id args stms) = case checkTypesDef env [t] of
+   Bad err -> Bad err
+   Ok _    -> case updateEnv env id $ Func (map extractType args, t) of 
+      Bad err -> Bad err
+      Ok env2 -> case checkArgs (newBlock env2) args of
+         Bad err -> Bad err
+         Ok env3 -> checkStms env3 stms
+checkDef (env, struct) (DStruct (Id id) fields) = 
+   if Map.member (Id id) struct then
+      Bad $ "Can't initialize two structs with the same name: " ++ id
+   else insertStruct (env, struct) (Id id) fields
+
+insertStruct :: Env -> Id -> [Field] -> Err Env
+insertStruct (env, struct) id fields = 
+   if length (nub ids) /= length ids then
+      Bad "Duplicate variable occurrence in struct"
+   else case checkTypesDefV (env, struct) types of
+      Ok _ -> Ok (env, Map.insert id [(ident, t) | (FDecl t ident) <- fields] struct)
+      Bad err -> Bad err
+   where ids = [ident | (FDecl t ident) <- fields]
+         types = [t | (FDecl t ident) <- fields]
+
+checkTypesDefV :: Env -> [Type] -> Err ()
+checkTypesDefV env [] = Ok ()
+checkTypesDefV env ((TypeId id):xs) = case lookupTypeId env id of
+   Bad err -> Bad err
+   Ok _    -> Ok ()
+checkTypesDefV env (Type_void:xs) = Bad "Type void not allowed"
+checkTypesDefV env (t:xs) = checkTypesDefV env xs
+
+checkTypesDef :: Env -> [Type] -> Err ()
+checkTypesDef env [] = Ok ()
+checkTypesDef env ((TypeId id):xs) = case lookupTypeId env id of
+   Bad err -> Bad err
+   Ok _    -> Ok ()
+checkTypesDef env (t:xs) = checkTypesDef env xs
 
 checkArgs :: Env -> [Arg] -> Err Env
 checkArgs env []       = Ok env
@@ -65,8 +95,9 @@ checkArgs env (arg:xs) = case checkArg env arg of
                          Ok env2 -> checkArgs env2 xs
 
 checkArg :: Env -> Arg -> Err Env
-checkArg _ (ADecl Type_void (Id id)) = Bad $ "Arguments can't be of type void, but " ++ id ++ " is"
-checkArg env (ADecl t id)            = updateEnv env id $ Var t
+checkArg env (ADecl t id)            = case checkTypesDefV env [t] of
+   Bad err -> Bad err
+   Ok _    -> updateEnv env id $ Var t
 
 checkStms :: Env -> [Stm] -> Err Env
 checkStms env [] = Ok $ deleteBlock env
@@ -106,12 +137,14 @@ checkIdins env t (idin:xs) = case checkIdin env t idin of
                              Ok env2 -> checkIdins env2 t xs
 
 checkIdin :: Env -> Type -> IdIn -> Err Env
-checkIdin _ (Type_void) (IdNoInit (Id id)) = Bad $ "Declarations can't be of type void, but " ++ id ++ " is"
-checkIdin _ (Type_void) (IdInit (Id id) _) = Bad $ "Declarations can't be of type void, but " ++ id ++ " is"
-checkIdin env t (IdNoInit id)              = updateEnv env id $ Var t
-checkIdin env t (IdInit id exp)            = case checkExp env exp t of
-                                             Bad err -> Bad err
-                                             Ok _    -> updateEnv env id $ Var t
+checkIdin env t (IdNoInit id)   = case checkTypesDefV env [t] of
+   Bad err -> Bad err
+   Ok _    -> updateEnv env id $ Var t
+checkIdin env t (IdInit id exp) = case checkTypesDefV env [t] of
+   Bad err -> Bad err
+   Ok _    -> case checkExp env exp t of
+      Bad err -> Bad err
+      Ok _    -> updateEnv env id $ Var t
 
 
 checkExps :: Env -> [Exp]-> [Type] -> Err ()
@@ -125,7 +158,7 @@ checkExp env exp t = case inferExp env exp of
                      Bad err -> Bad err
                      Ok t2   -> if t2 == t
                                 then Ok t
-                                else Bad $ "Expected: " ++ (show t) ++ " , but received: " ++ (show t2)
+                                else Bad $ "Expected: " ++ (show t) ++ ", but received: " ++ (show t2)
 
 
 inferExp :: Env -> Exp -> Err Type
@@ -134,23 +167,32 @@ inferExp env EFalse = Ok Type_bool
 inferExp env (EInt int) = Ok Type_int
 inferExp env (EDouble double) = Ok Type_double
 inferExp env (EId (Id id)) = case lookupEnv env (Id id) of
-                        Bad err -> Bad err
-                        Ok (Func _) -> Bad $ id ++ " is not a variable"
-                        Ok (Var t) -> Ok t
-inferExp (env:xs) (EApp (Id id) exps) = case lookupEnv xs (Id id) of
-                                        Bad err -> Bad err
-                                        Ok (Var _) -> Bad $ id ++ " is not a function" 
-                                        Ok (Func (args, ret)) -> if length args /= length exps
-                                                                 then Bad $ "Expected " ++ (show $ length args) ++ " arguments, but received " ++ (show $ length exps) ++ " instead"
-                                                                 else case checkExps (env:xs) exps args of
-                                                                      Bad err -> Bad err
-                                                                      Ok _    -> Ok ret                                                            
-inferExp env (EProj exp id) = Bad "inferExp not implemented"
+   Bad err -> Bad err
+   Ok (Func _) -> Bad $ id ++ " is not a variable"
+   Ok (Var t) -> Ok t
+inferExp ((env:xs), struct) (EApp (Id id) exps) = case lookupEnv (xs, struct) (Id id) of
+   Bad err -> Bad err
+   Ok (Var _) -> Bad $ id ++ " is not a function" 
+   Ok (Func (args, ret)) -> 
+      if length args /= length exps then 
+         Bad $ "Expected " ++ (show $ length args) ++ " arguments, but received " ++ (show $ length exps) ++ " instead"
+      else case checkExps ((env:xs), struct) exps args of
+         Bad err -> Bad err
+         Ok _    -> Ok ret
+
+inferExp env (EProj exp (Id id)) = case inferExp env exp of
+   Bad err        -> Bad err
+   Ok (TypeId (Id tid)) -> case lookupTypeId env (Id tid) of
+      Bad err   -> Bad err
+      Ok struct -> case find (\(ident, typ) -> ident == (Id id)) struct of
+         Just (ident, typ) -> Ok typ
+         Nothing           -> Bad $ "Struct " ++ tid ++ " doesn't have property with name " ++ id
+   Ok t           -> Bad $ "Can't access property of a primitve type " ++ show t
 
 inferExp env (EPIncr exp) = findTypeNum env exp
 inferExp env (EPDecr exp) = findTypeNum env exp
 inferExp env (EIncr exp) = findTypeNum env exp
-inferExp env (EDecr exp )= findTypeNum env exp
+inferExp env (EDecr exp) = findTypeNum env exp
 inferExp env (EUPlus exp) = findTypeNum env exp
 inferExp env (EUMinus exp) = findTypeNum env exp
 
@@ -215,23 +257,30 @@ returnComparison env r_typ exp1 exp2 = do
 extractType :: Arg -> Type
 extractType (ADecl t _) = t
 
+lookupTypeId :: Env -> Id -> Err Struct
+lookupTypeId (env, struct) (Id id) = 
+   case Map.lookup (Id id) struct of
+      Just entry -> Ok entry
+      Nothing    -> Bad $ "Type not defined: " ++ id
+
 lookupEnv :: Env -> Id -> Err Entry
-lookupEnv [] (Id id) = Bad $ id ++ " undefined"
-lookupEnv (x:xs) id  = case Map.lookup id x of
-                         Just entry -> Ok entry
-                         Nothing    -> lookupEnv xs id
+lookupEnv ([], _) (Id id) = Bad $ id ++ " undefined"
+lookupEnv ((x:xs), struct) id  = case Map.lookup id x of
+                                 Just entry -> Ok entry
+                                 Nothing    -> lookupEnv (xs, struct) id
 
 updateEnv :: Env -> Id -> Entry -> Err Env
-updateEnv (x:xs) (Id id) entry = if Map.member (Id id) x
-                            then Bad $ "Variable " ++ id ++ " already declared in this block"
-                            else Ok $ Map.insert (Id id) entry x :xs
+updateEnv ((x:xs), struct) (Id id) entry = 
+   if Map.member (Id id) x then 
+      Bad $ "Variable " ++ id ++ " already declared in this block"
+   else Ok $ (Map.insert (Id id) entry x :xs, struct)
 
 -- Building the stack from front to back. The first element of the list is always the top element of the stack.
 newBlock :: Env -> Env
-newBlock env = Map.empty:env
+newBlock (env, struct) = (Map.empty:env, struct)
 
 deleteBlock :: Env -> Env
-deleteBlock (env:xs) = xs
+deleteBlock ((env:xs), struct) = (xs, struct)
 
 emptyEnv :: Env
-emptyEnv = [Map.empty]
+emptyEnv = ([Map.empty], Map.empty)

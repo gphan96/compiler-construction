@@ -1,11 +1,19 @@
-void f(bool x, double y) {
+struct ABC {
+	int xyz;
+};
+
+struct sa {
+	ABC xyz;
+};
+
+void f(ABC x, int y) {
 	int z;
 }
 
 int main() {
-  	int j = 3, i = 2;
+  	ABC j;
 
-	if(i < 5) {
+	if(3 < j.xyz) {
 		bool j = false;
 		while(j) 1;
 	} else {
