@@ -16,7 +16,7 @@ type Struct = [(Id, Type)]
 type Func = ([Type], Type)
 type Structs = Map Id Struct
 
-data Entry = Var Type | Func Func
+data Entry = Var Type | Func Func deriving Show
 
 type Env = [Map Id Entry]
 
@@ -69,7 +69,7 @@ checkArg _ (ADecl Type_void (Id id)) = Bad $ "Arguments can't be of type void, b
 checkArg env (ADecl t id)            = updateEnv env id $ Var t
 
 checkStms :: Env -> [Stm] -> Err Env
-checkStms env [] = Ok env
+checkStms env [] = Ok $ deleteBlock env
 checkStms env (stm:xs) = case checkStm env stm of
                          Bad err -> Bad err
                          Ok env2 -> checkStms env2 xs
@@ -93,7 +93,7 @@ checkStm env (SFor exp1 exp2 exp3 stm) = case inferExp env exp1 of
                                                     Ok _    -> case inferExp env exp3 of
                                                                Bad err -> Bad err
                                                                Ok _    -> checkStm env stm
-checkStm env (SBlock stms) = Bad "checkStm not implemented" --Task 2
+checkStm env (SBlock stms) = checkStms (newBlock env) stms
 checkStm env (SIfElse exp stm1 stm2) = do        --Task 2
    checkExp env exp Type_bool
    checkStm env stm1
@@ -195,10 +195,10 @@ findTypeNum env exp = do typ <- inferExp env exp
 
 inferArithmBin :: Env -> [Type] -> Exp -> Exp -> Err Type
 inferArithmBin env typs exp1 exp2 = do
-    typ1 <- inferExp env exp1
-    if typ1 `elem` typs then
-        checkExp env exp2 typ1
-    else Bad $ "Type error of expression " ++ printTree exp1
+   typ1 <- inferExp env exp1
+   if typ1 `elem` typs then
+      checkExp env exp2 typ1
+   else Bad $ "Type error of expression " ++ printTree exp1
 
 returnComparison :: Env -> Type -> Exp -> Exp -> Err Type
 returnComparison env r_typ exp1 exp2 = do
@@ -226,6 +226,9 @@ updateEnv (x:xs) (Id id) entry = if Map.member (Id id) x
 -- Building the stack from front to back. The first element of the list is always the top element of the stack.
 newBlock :: Env -> Env
 newBlock env = Map.empty:env
+
+deleteBlock :: Env -> Env
+deleteBlock (env:xs) = xs
 
 emptyEnv :: Env
 emptyEnv = [Map.empty]

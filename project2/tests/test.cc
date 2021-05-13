@@ -3,7 +3,12 @@ void f(bool x, double y) {
 }
 
 int main() {
-  	int j, i;
+  	int j = 3, i = 2;
 
-	for(3 * 4; 5 <= 6; 7 <=> 8) f(3 <= 4, 4.5);
+	if(i < 5) {
+		bool j = false;
+		while(j) 1;
+	} else {
+		double i = 3.5;
+	}
 }
