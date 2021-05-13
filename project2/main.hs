@@ -253,9 +253,18 @@ inferExp env (EOr exp1 exp2) = inferArithmBin env [Type_bool] exp1 exp2
 
 inferExp env (EAss exp1 exp2) = do typ1 <- inferExp env exp1
                                    checkExp env exp2 typ1
-inferExp env (ECond exp1 exp2 exp3) = do checkExp env exp1 Type_bool
-                                         inferArithmBin env [Type_int, Type_double, Type_bool] exp1 exp2
+inferExp env (ECond exp1 exp2 exp3) = case checkExp env exp1 Type_bool of
+   Bad err -> Bad err
+   Ok _    -> inferBinEq env exp2 exp3
 
+inferBinEq :: Env -> Exp -> Exp -> Err Type
+inferBinEq env exp1 exp2 = do
+   typ1 <- inferExp env exp1
+   typ2 <- inferExp env exp2
+   checkTypesDefV env [typ1, typ2]
+   if typ1 == typ2 then
+      return typ1
+   else Bad $ "Expressions not of the same type: " ++ printTree exp1 ++ "; " ++ printTree exp2
 
 findTypeNum :: Env -> Exp -> Err Type
 findTypeNum env exp = do typ <- inferExp env exp

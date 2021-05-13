@@ -21,5 +21,7 @@ void main() {
 		double i = 3.5;
 	}
 
+	true ? j : j;
+
 	return;
 }
