@@ -1,32 +1,34 @@
-import System.Environment (getArgs)
-import System.Exit (exitFailure)
+import           System.Environment (getArgs)
+import           System.Exit        (exitFailure)
 
-import qualified Data.Map as Map
-import Data.Map (Map)
-import Data.List (nub, find)
+import           Data.List          (find, nub)
+import           Data.Map           (Map)
+import qualified Data.Map           as Map
 
-import AbsCPP
-import LexCPP
-import ParCPP
-import ErrM
-import PrintCPP
+import           AbsCPP
+import           ErrM
+import           LexCPP
+import           ParCPP
+import           PrintCPP
+
 
 ------------- Type definitions -------------
 
-type Struct = [(Id, Type)]
+type Struct = [(Id,Type)]
 type Func = ([Type], Type)
 
 data Entry = Var Type | Func Func deriving Show
 
-type Env = ([Map Id Entry], Map Id Struct)
+
+type Env = ([Map Id Entry], [(Id, Func)], Map Id Struct)
 
 ------------- Main functions -------------
 
-process :: String -> IO () 
+process :: String -> IO ()
 process s = case pProgram (myLexer s) of
             Bad err  -> do putStrLn "SYNTAX ERROR"
                            putStrLn err
-                           exitFailure 
+                           exitFailure
             Ok  tree -> case typecheck tree of
                         Bad err -> do putStrLn "TYPE ERROR"
                                       putStrLn err
@@ -43,7 +45,7 @@ typecheck :: Program -> Err () --main typecheck function
 typecheck (PDefs defs) = case checkDefs emptyEnv defs of
                          Bad err -> Bad err
                          Ok _    -> Ok ()
-                   
+
 checkDefs :: Env -> [Def] -> Err Env
 checkDefs env [] = Ok env
 checkDefs env (def:xs) = case checkDef env def of
@@ -53,25 +55,32 @@ checkDefs env (def:xs) = case checkDef env def of
 checkDef :: Env -> Def -> Err Env
 checkDef env (DFun t id args stms) = case checkTypesDef env [t] of
    Bad err -> Bad err
-   Ok _    -> case updateEnv env id $ Func (map extractType args, t) of 
+   Ok _    -> case insertFunct env id $ (map extractType args, t) of
       Bad err -> Bad err
       Ok env2 -> case checkArgs (newBlock env2) args of
          Bad err -> Bad err
          Ok env3 -> checkStms env3 stms
-checkDef (env, struct) (DStruct (Id id) fields) = 
+checkDef (env, functs, struct) (DStruct (Id id) fields) =
    if Map.member (Id id) struct then
       Bad $ "Can't initialize two structs with the same name: " ++ id
-   else insertStruct (env, struct) (Id id) fields
+   else insertStruct (env, functs, struct) (Id id) fields
 
 insertStruct :: Env -> Id -> [Field] -> Err Env
-insertStruct (env, struct) id fields = 
+insertStruct (env, functs, struct) id fields =
    if length (nub ids) /= length ids then
       Bad "Duplicate variable occurrence in struct"
-   else case checkTypesDefV (env, struct) types of
-      Ok _ -> Ok (env, Map.insert id [(ident, t) | (FDecl t ident) <- fields] struct)
+   else case checkTypesDefV (env, functs, struct) types of
+      Ok _ -> Ok (env, functs, Map.insert id [(ident, t) | (FDecl t ident) <- fields] struct)
       Bad err -> Bad err
    where ids = [ident | (FDecl t ident) <- fields]
          types = [t | (FDecl t ident) <- fields]
+
+insertFunct :: Env -> Id -> Func -> Err Env
+insertFunct (env, functs, struct) id func =
+    case find (\(idf, _) -> idf == id) functs of
+        Nothing -> Ok (env, (id, func):functs, struct)
+        Just f  -> Bad $ "Function " ++ show id ++ " already declared"
+
 
 checkTypesDefV :: Env -> [Type] -> Err ()
 checkTypesDefV env [] = Ok ()
@@ -111,12 +120,26 @@ checkStm env (SExp exp) = case inferExp env exp of
                           Bad err -> Bad err
                           Ok _    -> Ok env
 checkStm env (SDecls t idins) = checkIdins env t idins
-checkStm env (SReturn exp) = Bad "checkStm not implemented"
-checkStm env SReturnV = Bad "checkStm not implemented"
-checkStm env (SWhile exp stm) = do                       --Task 2
+checkStm env@(_, func:xs, struct) (SReturn exp) = case func of
+                                                  (Id id, (args, ret)) -> case inferExp env exp of
+                                                                          Ok typ -> if ret == typ
+                                                                                    then Ok env
+                                                                                    else Bad $ "Invalid conversion from '" ++ printTree typ ++ "'' to '" ++ printTree ret ++ "'' in function " ++ show id
+                                                                          Bad err -> Bad err
+
+checkStm env@(_, func:xs, struct) SReturnV = case func of
+                                             (Id id, (args, ret)) -> case ret of
+                                                                     Type_void -> Ok env
+                                                                     _         -> Bad $ "return-statement without a value, in function returning '" ++ printTree ret ++ "'"
+
+
+
+checkStm env (SWhile exp stm) = do                         --Task 2
    checkExp env exp Type_bool
    checkStm env stm
-checkStm env (SDoWhile stm exp) = Bad "checkStm not implemented"
+checkStm env (SDoWhile stm exp) = do                       --Task 2
+   checkExp env exp Type_bool
+   checkStm env stm
 checkStm env (SFor exp1 exp2 exp3 stm) = case inferExp env exp1 of
                                          Bad err -> Bad err
                                          Ok _    -> case checkExp env exp2 Type_bool of
@@ -167,16 +190,16 @@ inferExp env EFalse = Ok Type_bool
 inferExp env (EInt int) = Ok Type_int
 inferExp env (EDouble double) = Ok Type_double
 inferExp env (EId (Id id)) = case lookupEnv env (Id id) of
-   Bad err -> Bad err
+   Bad err     -> Bad err
    Ok (Func _) -> Bad $ id ++ " is not a variable"
-   Ok (Var t) -> Ok t
-inferExp ((env:xs), struct) (EApp (Id id) exps) = case lookupEnv (xs, struct) (Id id) of
+   Ok (Var t)  -> Ok t
+inferExp ((env:xs), functs, struct) (EApp (Id id) exps) = case lookupEnv (xs, functs, struct) (Id id) of
    Bad err -> Bad err
-   Ok (Var _) -> Bad $ id ++ " is not a function" 
-   Ok (Func (args, ret)) -> 
-      if length args /= length exps then 
+   Ok (Var _) -> Bad $ id ++ " is not a function"
+   Ok (Func (args, ret)) ->
+      if length args /= length exps then
          Bad $ "Expected " ++ (show $ length args) ++ " arguments, but received " ++ (show $ length exps) ++ " instead"
-      else case checkExps ((env:xs), struct) exps args of
+      else case checkExps ((env:xs), functs, struct) exps args of
          Bad err -> Bad err
          Ok _    -> Ok ret
 
@@ -249,7 +272,7 @@ returnComparison :: Env -> Type -> Exp -> Exp -> Err Type
 returnComparison env r_typ exp1 exp2 = do
    let typs = [Type_int, Type_double]
    case inferArithmBin env typs exp1 exp2 of
-      Ok _  -> return r_typ
+      Ok _    -> return r_typ
       Bad err -> Bad $ err
 
 ------------- Auxiliary functions -------------
@@ -258,29 +281,32 @@ extractType :: Arg -> Type
 extractType (ADecl t _) = t
 
 lookupTypeId :: Env -> Id -> Err Struct
-lookupTypeId (env, struct) (Id id) = 
+lookupTypeId (env, functs, struct) (Id id) =
    case Map.lookup (Id id) struct of
       Just entry -> Ok entry
       Nothing    -> Bad $ "Type not defined: " ++ id
 
 lookupEnv :: Env -> Id -> Err Entry
-lookupEnv ([], _) (Id id) = Bad $ id ++ " undefined"
-lookupEnv ((x:xs), struct) id  = case Map.lookup id x of
+lookupEnv ([], _, _) (Id id) = Bad $ id ++ " undefined"
+lookupEnv ((x:xs), functs, struct) id  = case Map.lookup id x of
                                  Just entry -> Ok entry
-                                 Nothing    -> lookupEnv (xs, struct) id
+                                 Nothing    -> lookupEnv (xs, functs, struct) id
+
+
 
 updateEnv :: Env -> Id -> Entry -> Err Env
-updateEnv ((x:xs), struct) (Id id) entry = 
-   if Map.member (Id id) x then 
+updateEnv ((x:xs), functs, struct) (Id id) entry =
+   if Map.member (Id id) x then
       Bad $ "Variable " ++ id ++ " already declared in this block"
-   else Ok $ (Map.insert (Id id) entry x :xs, struct)
+   else Ok $ (Map.insert (Id id) entry x :xs, functs, struct)
+
 
 -- Building the stack from front to back. The first element of the list is always the top element of the stack.
 newBlock :: Env -> Env
-newBlock (env, struct) = (Map.empty:env, struct)
+newBlock (env, functs, struct) = (Map.empty:env, functs, struct)
 
 deleteBlock :: Env -> Env
-deleteBlock ((env:xs), struct) = (xs, struct)
+deleteBlock ((env:xs), functs, struct) = (xs, functs, struct)
 
 emptyEnv :: Env
-emptyEnv = ([Map.empty], Map.empty)
+emptyEnv = ([Map.empty], [], Map.empty)
