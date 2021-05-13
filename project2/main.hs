@@ -133,7 +133,10 @@ inferExp env ETrue = Ok Type_bool
 inferExp env EFalse = Ok Type_bool
 inferExp env (EInt int) = Ok Type_int
 inferExp env (EDouble double) = Ok Type_double
-inferExp env (EId id) = Ok $ TypeId id
+inferExp env (EId (Id id)) = case lookupEnv env (Id id) of
+                        Bad err -> Bad err
+                        Ok (Func _) -> Bad $ id ++ " is not a variable"
+                        Ok (Var t) -> Ok t
 inferExp (env:xs) (EApp (Id id) exps) = case lookupEnv xs (Id id) of
                                         Bad err -> Bad err
                                         Ok (Var _) -> Bad $ id ++ " is not a function" 
@@ -205,7 +208,7 @@ returnComparison env r_typ exp1 exp2 = do
    let typs = [Type_int, Type_double]
    case inferArithmBin env typs exp1 exp2 of
       Ok _  -> return r_typ
-      Bad _ -> Bad $ printTree exp2 ++ " should have type of " ++ printTree exp1
+      Bad err -> Bad $ err
 
 ------------- Auxiliary functions -------------
 
