@@ -55,11 +55,13 @@ checkDefs env (def:xs) = case checkDef env def of
 checkDef :: Env -> Def -> Err Env
 checkDef env (DFun t id args stms) = case checkTypesDef env [t] of
    Bad err -> Bad err
-   Ok _    -> case insertFunct env id $ (map extractType args, t) of
+   Ok _    -> case updateEnv env id $ Func (map extractType args, t) of 
       Bad err -> Bad err
-      Ok env2 -> case checkArgs (newBlock env2) args of
+      Ok env2 -> case insertFunct env2 id $ (map extractType args, t) of
          Bad err -> Bad err
-         Ok env3 -> checkStms env3 stms
+         Ok env3 -> case checkArgs (newBlock env3) args of
+            Bad err -> Bad err
+            Ok env4 -> checkStms env4 stms
 checkDef (env, functs, struct) (DStruct (Id id) fields) =
    if Map.member (Id id) struct then
       Bad $ "Can't initialize two structs with the same name: " ++ id

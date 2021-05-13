@@ -10,8 +10,9 @@ void f(ABC x, int y) {
 	int z;
 }
 
-int main() {
+void main() {
   	ABC j;
+	f(j, 3);
 
 	if(3 < j.xyz) {
 		bool j = false;
@@ -19,4 +20,6 @@ int main() {
 	} else {
 		double i = 3.5;
 	}
+
+	return;
 }
