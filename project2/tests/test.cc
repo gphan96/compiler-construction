@@ -21,7 +21,11 @@ void main() {
 		double i = 3.5;
 	}
 
-	true ? j : j;
+	int i = 10;
+	true ? ++j.xyz : -i;
+
+	j.xyz = 5;
+	i = 10;
 
 	return;
 }

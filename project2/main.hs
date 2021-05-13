@@ -251,11 +251,18 @@ inferExp env (ENEq exp1 exp2) = returnComparison env Type_bool exp1 exp2
 inferExp env (EAnd exp1 exp2) = inferArithmBin env [Type_bool] exp1 exp2
 inferExp env (EOr exp1 exp2) = inferArithmBin env [Type_bool] exp1 exp2
 
-inferExp env (EAss exp1 exp2) = do typ1 <- inferExp env exp1
-                                   checkExp env exp2 typ1
+inferExp env (EAss exp1 exp2) = do 
+   checkVarOrProj exp1
+   typ1 <- inferExp env exp1
+   checkExp env exp2 typ1
 inferExp env (ECond exp1 exp2 exp3) = case checkExp env exp1 Type_bool of
    Bad err -> Bad err
    Ok _    -> inferBinEq env exp2 exp3
+
+checkVarOrProj :: Exp -> Err ()
+checkVarOrProj (EId id) = Ok ()
+checkVarOrProj (EProj exp id) = Ok ()
+checkVarOrProj _ = Bad $ "Can't perform operation on complex expression"
 
 inferBinEq :: Env -> Exp -> Exp -> Err Type
 inferBinEq env exp1 exp2 = do
@@ -267,10 +274,12 @@ inferBinEq env exp1 exp2 = do
    else Bad $ "Expressions not of the same type: " ++ printTree exp1 ++ "; " ++ printTree exp2
 
 findTypeNum :: Env -> Exp -> Err Type
-findTypeNum env exp = do typ <- inferExp env exp
-                         if typ `elem` [Type_int, Type_double]
-                         then return typ
-                         else Bad $ "Type error of expression " ++ printTree exp
+findTypeNum env exp = do 
+   checkVarOrProj exp
+   typ <- inferExp env exp
+   if typ `elem` [Type_int, Type_double]
+   then return typ
+   else Bad $ "Type error of expression " ++ printTree exp
 
 inferArithmBin :: Env -> [Type] -> Exp -> Exp -> Err Type
 inferArithmBin env typs exp1 exp2 = do
