@@ -152,13 +152,13 @@ checkStm env (SWhile exp stm) = do                         --Task 2
 checkStm env (SDoWhile stm exp) = do                       --Task 2
    checkExp env exp Type_bool
    checkStm env stm
-checkStm env (SFor exp1 exp2 exp3 stm) = case inferExp env exp1 of
-                                         Bad err -> Bad err
-                                         Ok _    -> case checkExp env exp2 Type_bool of
-                                                    Bad err -> Bad err
-                                                    Ok _    -> case inferExp env exp3 of
-                                                               Bad err -> Bad err
-                                                               Ok _    -> checkStm env stm
+
+checkStm env (SFor exp1 exp2 exp3 stm) = do
+   inferExp env exp1
+   checkExp env exp2 Type_bool
+   inferExp env exp3
+   checkStm env stm
+
 checkStm env (SBlock stms) = checkStms (newBlock env) stms
 checkStm env (SIfElse exp stm1 stm2) = do        --Task 2
    checkExp env exp Type_bool
@@ -231,12 +231,13 @@ inferExp env (EDecr exp) = findTypeNum env exp
 inferExp env (EUPlus exp) = findTypeNum env exp
 inferExp env (EUMinus exp) = findTypeNum env exp
 
-inferExp env (ETimes exp1 exp2) = inferArithmBin env [Type_int, Type_double] exp1 exp2
-   -- case checkExps env [exp, exp2] [Type_int, Type_int] of
-   --                               Ok _  -> Ok Type_int
-   --                               Bad _ -> case checkExps env [exp, exp2] [Type_double, Type_double] of
-   --                                        Ok _    -> Ok Type_double
-   --                                        Bad err -> Bad err
+inferExp env (ETimes exp1 exp2) = do
+   typ1 <- inferExp env exp1
+   typ2 <- inferExp env exp2
+   checkNum typ1
+   checkNum typ2
+   implTypeConv typ1 typ2
+
 inferExp env (EDiv exp1 exp2) = inferArithmBin env [Type_int, Type_double] exp1 exp2
 inferExp env (EPlus exp1 exp2) = inferArithmBin env [Type_int, Type_double] exp1 exp2
 inferExp env (EMinus exp1 exp2) = inferArithmBin env [Type_int, Type_double] exp1 exp2
@@ -249,12 +250,14 @@ inferExp env (ETwc exp1 exp2) = returnComparison env Type_int exp1 exp2
    --                                      Bad err -> Bad err
 inferExp env (ELt exp1 exp2) = returnComparison env Type_bool exp1 exp2
 inferExp env (EGt exp1 exp2) = returnComparison env Type_bool exp1 exp2
-inferExp env (ELtEq exp1 exp2) = returnComparison env Type_bool exp1 exp2
-   -- case checkExps env [exp, exp2] [Type_int, Type_int] of
-   --                              Ok _  -> Ok Type_bool
-   --                              Bad _ -> case checkExps env [exp, exp2] [Type_double, Type_double] of
-   --                                       Ok _    -> Ok Type_bool
-   --                                       Bad err -> Bad err
+inferExp env (ELtEq exp1 exp2) = do
+   typ1 <- inferExp env exp1
+   typ2 <- inferExp env exp2
+   checkNum typ1
+   checkNum typ2
+   implTypeConv typ1 typ2
+   return Type_bool
+
 inferExp env (EGtEq exp1 exp2) = returnComparison env Type_bool exp1 exp2
 inferExp env (EEq exp1 exp2) = returnComparison env Type_bool exp1 exp2
 inferExp env (ENEq exp1 exp2) = returnComparison env Type_bool exp1 exp2
@@ -269,6 +272,11 @@ inferExp env (ECond exp1 exp2 exp3) = case checkExp env exp1 Type_bool of
    Bad err -> Bad err
    Ok _    -> inferBinEq env exp2 exp3
 
+checkNum :: Type -> Err Type
+checkNum t
+   | t `elem` [Type_int, Type_double] = Ok t
+   | otherwise = Bad "Operation not available on non-number type"
+
 checkVarOrProj :: Exp -> Err ()
 checkVarOrProj (EId id) = Ok ()
 checkVarOrProj (EProj exp id) = Ok ()
@@ -278,10 +286,14 @@ inferBinEq :: Env -> Exp -> Exp -> Err Type
 inferBinEq env exp1 exp2 = do
    typ1 <- inferExp env exp1
    typ2 <- inferExp env exp2
-   checkTypesDefV env [typ1, typ2]
-   if typ1 == typ2 then
-      return typ1
-   else Bad $ "Expressions not of the same type: " ++ printTree exp1 ++ "; " ++ printTree exp2
+   checkTypesDef env [typ1, typ2]
+   implTypeConv typ1 typ2
+
+implTypeConv :: Type -> Type -> Err Type
+implTypeConv typ1 typ2
+   | typ1 == typ2 = Ok typ1
+   | ((typ1 == Type_double && typ2 == Type_int) || (typ2 == Type_double && typ1 == Type_int))  = Ok Type_double
+   | otherwise = Bad $ "Expressions not of the same type: " ++ show typ1 ++ " and " ++ show typ2
 
 findTypeNum :: Env -> Exp -> Err Type
 findTypeNum env exp = do 
