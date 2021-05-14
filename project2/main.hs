@@ -261,8 +261,8 @@ inferExp env (ELtEq exp1 exp2) = do
 inferExp env (EEq exp1 exp2) = returnComparison env Type_bool exp1 exp2
 inferExp env (ENEq exp1 exp2) = returnComparison env Type_bool exp1 exp2
 
--- inferExp env (EAnd exp1 exp2) = inferArithmBin env [Type_bool] exp1 exp2
--- inferExp env (EOr exp1 exp2) = inferArithmBin env [Type_bool] exp1 exp2
+inferExp env (EAnd exp1 exp2) = returnBool env exp1 exp2
+inferExp env (EOr exp1 exp2) = returnBool env exp1 exp2
 
 inferExp env (EAss exp1 exp2) = do 
    checkVarOrProj exp1
@@ -319,6 +319,16 @@ returnComparison env r_typ exp1 exp2 =
       Ok _  -> return r_typ
       Bad _ -> Bad $ "Expected type 'int' or 'double' for both expression "
                      ++ printTree exp1 ++ " and " ++ printTree exp2
+
+returnBool :: Env -> Exp -> Exp -> Err Type
+returnBool env exp1 exp2 = do
+   typ <- inferExp env exp1
+   case typ of
+      Type_bool -> do checkExp env exp2 typ
+                      return typ
+      _         -> Bad $ "In expression: " ++ printTree exp1
+                         ++ ", expected type: " ++ printTree Type_bool
+                         ++ ", actual type: " ++ printTree typ
 
 implicitConv :: Env -> Exp -> Exp -> Err Type
 implicitConv env exp1 exp2 = 
