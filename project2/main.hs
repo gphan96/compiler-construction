@@ -238,17 +238,15 @@ inferExp env (ETimes exp1 exp2) = do
    checkNum typ2
    implTypeConv typ1 typ2
 
-inferExp env (EDiv exp1 exp2) = inferArithmBin env [Type_int, Type_double] exp1 exp2
-inferExp env (EPlus exp1 exp2) = inferArithmBin env [Type_int, Type_double] exp1 exp2
-inferExp env (EMinus exp1 exp2) = inferArithmBin env [Type_int, Type_double] exp1 exp2
+-- inferExp env (EDiv exp1 exp2) =     -- TODO
+-- inferExp env (EPlus exp1 exp2) =    -- TODO
+
+inferExp env (EMinus exp1 exp2) = inferArithmBin env exp1 exp2
 
 inferExp env (ETwc exp1 exp2) = returnComparison env Type_int exp1 exp2
-   -- case checkExps env [exp, exp2] [Type_int, Type_int] of
-   --                             Ok _  -> Ok Type_int
-   --                             Bad _ -> case checkExps env [exp, exp2] [Type_double, Type_double] of
-   --                                      Ok _    -> Ok Type_int
-   --                                      Bad err -> Bad err
-inferExp env (ELt exp1 exp2) = returnComparison env Type_bool exp1 exp2
+
+-- inferExp env (ELt exp1 exp2) =      -- TODO
+
 inferExp env (EGt exp1 exp2) = returnComparison env Type_bool exp1 exp2
 inferExp env (ELtEq exp1 exp2) = do
    typ1 <- inferExp env exp1
@@ -258,11 +256,13 @@ inferExp env (ELtEq exp1 exp2) = do
    implTypeConv typ1 typ2
    return Type_bool
 
-inferExp env (EGtEq exp1 exp2) = returnComparison env Type_bool exp1 exp2
+--inferExp env (EGtEq exp1 exp2) =     -- TODO
+
 inferExp env (EEq exp1 exp2) = returnComparison env Type_bool exp1 exp2
 inferExp env (ENEq exp1 exp2) = returnComparison env Type_bool exp1 exp2
-inferExp env (EAnd exp1 exp2) = inferArithmBin env [Type_bool] exp1 exp2
-inferExp env (EOr exp1 exp2) = inferArithmBin env [Type_bool] exp1 exp2
+
+-- inferExp env (EAnd exp1 exp2) = inferArithmBin env [Type_bool] exp1 exp2
+-- inferExp env (EOr exp1 exp2) = inferArithmBin env [Type_bool] exp1 exp2
 
 inferExp env (EAss exp1 exp2) = do 
    checkVarOrProj exp1
@@ -271,6 +271,7 @@ inferExp env (EAss exp1 exp2) = do
 inferExp env (ECond exp1 exp2 exp3) = case checkExp env exp1 Type_bool of
    Bad err -> Bad err
    Ok _    -> inferBinEq env exp2 exp3
+
 
 checkNum :: Type -> Err Type
 checkNum t
@@ -303,19 +304,32 @@ findTypeNum env exp = do
    then return typ
    else Bad $ "Type error of expression " ++ printTree exp
 
-inferArithmBin :: Env -> [Type] -> Exp -> Exp -> Err Type
-inferArithmBin env typs exp1 exp2 = do
-   typ1 <- inferExp env exp1
-   if typ1 `elem` typs then
-      checkExp env exp2 typ1
-   else Bad $ "Type error of expression " ++ printTree exp1
+inferArithmBin :: Env -> Exp -> Exp -> Err Type
+inferArithmBin env exp1 exp2 =
+   case implicitConv env exp1 exp2 of
+      Ok typ -> return typ
+      Bad _  -> do typ <- inferExp env exp1
+                   case typ of
+                      Type_bool -> Bad $ "Unexpected type of " ++ printTree exp1
+                      _         -> Bad $ "Unexpected type of " ++ printTree exp2
 
 returnComparison :: Env -> Type -> Exp -> Exp -> Err Type
-returnComparison env r_typ exp1 exp2 = do
-   let typs = [Type_int, Type_double]
-   case inferArithmBin env typs exp1 exp2 of
-      Ok _    -> return r_typ
-      Bad err -> Bad $ err
+returnComparison env r_typ exp1 exp2 =
+   case implicitConv env exp1 exp2 of
+      Ok _  -> return r_typ
+      Bad _ -> Bad $ "Expected type 'int' or 'double' for both expression "
+                     ++ printTree exp1 ++ " and " ++ printTree exp2
+
+implicitConv :: Env -> Exp -> Exp -> Err Type
+implicitConv env exp1 exp2 = 
+   do typ1 <- inferExp env exp1
+      typ2 <- inferExp env exp2
+      case (typ1, typ2) of
+         (Type_int, Type_int) -> return typ1
+         (Type_double, Type_double) -> return typ1
+         (Type_double, Type_int) -> return typ1
+         (Type_int, Type_double) -> return typ2
+         _                       -> Bad ""
 
 ------------- Auxiliary functions -------------
 
