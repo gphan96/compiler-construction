@@ -228,8 +228,14 @@ inferExp env (EPIncr exp) = findTypeNum env exp
 inferExp env (EPDecr exp) = findTypeNum env exp
 inferExp env (EIncr exp) = findTypeNum env exp
 inferExp env (EDecr exp) = findTypeNum env exp
-inferExp env (EUPlus exp) = findTypeNum env exp
-inferExp env (EUMinus exp) = findTypeNum env exp
+inferExp env (EUPlus exp) = do
+   typ <- inferExp env exp
+   checkNum typ
+   return typ
+inferExp env (EUMinus exp) = do
+   typ <- inferExp env exp
+   checkNum typ
+   return typ
 
 inferExp env (ETimes exp1 exp2) = do
    typ1 <- inferExp env exp1
@@ -264,11 +270,27 @@ inferExp env (ELtEq exp1 exp2) = do
 
 inferExp env (EGtEq exp1 exp2) = returnComparison env Type_bool exp1 exp2
 
-inferExp env (EEq exp1 exp2) = returnComparison env Type_bool exp1 exp2
-inferExp env (ENEq exp1 exp2) = returnComparison env Type_bool exp1 exp2
+inferExp env (EEq exp1 exp2) = do
+   typ1 <- inferExp env exp1
+   typ2 <- inferExp env exp2
+   checkTypesDef env [typ1, typ2]
+   implTypeConv typ1 typ2
+   return Type_bool
 
-inferExp env (EAnd exp1 exp2) = returnBool env exp1 exp2
-inferExp env (EOr exp1 exp2) = returnBool env exp1 exp2
+inferExp env (ENEq exp1 exp2) = do
+   typ1 <- inferExp env exp1
+   typ2 <- inferExp env exp2
+   checkTypesDef env [typ1, typ2]
+   implTypeConv typ1 typ2
+   return Type_bool
+
+inferExp env (EAnd exp1 exp2) = do
+   checkExps env [exp1, exp2] [Type_bool, Type_bool]
+   return Type_bool
+
+inferExp env (EOr exp1 exp2) = do
+   checkExps env [exp1, exp2] [Type_bool, Type_bool]
+   return Type_bool
 
 inferExp env (EAss exp1 exp2) = do 
    checkVarOrProj exp1
