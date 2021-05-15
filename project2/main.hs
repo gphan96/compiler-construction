@@ -262,7 +262,7 @@ inferExp env (ELtEq exp1 exp2) = do
    implTypeConv typ1 typ2
    return Type_bool
 
---inferExp env (EGtEq exp1 exp2) =     -- TODO
+inferExp env (EGtEq exp1 exp2) = returnComparison env Type_bool exp1 exp2
 
 inferExp env (EEq exp1 exp2) = returnComparison env Type_bool exp1 exp2
 inferExp env (ENEq exp1 exp2) = returnComparison env Type_bool exp1 exp2
