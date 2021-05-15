@@ -136,11 +136,9 @@ checkStm env (SExp exp) = case inferExp env exp of
                           Ok _    -> Ok env
 checkStm env (SDecls t idins) = checkIdins env t idins
 checkStm env@(_, func:xs, struct) (SReturn exp) = case func of
-                                                  (Id id, (args, ret)) -> case inferExp env exp of
-                                                                          Ok typ -> if ret == typ
-                                                                                    then Ok env
-                                                                                    else Bad $ "Invalid conversion from '" ++ printTree typ ++ "'' to '" ++ printTree ret ++ "'' in function " ++ show id
-                                                                          Bad err -> Bad err
+                                                  (Id id, (args, ret)) -> case checkExp env exp ret of
+                                                                          Ok _    -> Ok env
+                                                                          Bad err -> Bad $ "Invalid conversion to '" ++ show ret ++ "' in function " ++ show id
 
 checkStm env@(_, func:xs, struct) SReturnV = case func of
                                              (Id id, (args, ret)) -> case ret of
