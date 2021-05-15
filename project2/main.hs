@@ -189,11 +189,11 @@ checkExps env (exp:xs) (t:ys) = case checkExp env exp t of
                                 Ok _    -> checkExps env xs ys
 
 checkExp :: Env -> Exp -> Type -> Err Type
-checkExp env exp t = case inferExp env exp of
-                     Bad err -> Bad err
-                     Ok t2   -> if t2 == t
-                                then Ok t
-                                else Bad $ "Expected: " ++ (show t) ++ ", but received: " ++ (show t2)
+checkExp env exp t = do
+   t2 <- inferExp env exp
+   if t == t2 || t == Type_double && t2 == Type_int
+      then Ok t
+   else Bad $ "Expected: " ++ (show t) ++ ", but received: " ++ (show t2)
 
 
 inferExp :: Env -> Exp -> Err Type
@@ -274,9 +274,9 @@ inferExp env (EAss exp1 exp2) = do
    checkVarOrProj exp1
    typ1 <- inferExp env exp1
    checkExp env exp2 typ1
-inferExp env (ECond exp1 exp2 exp3) = case checkExp env exp1 Type_bool of
-   Bad err -> Bad err
-   Ok _    -> inferBinEq env exp2 exp3
+inferExp env (ECond exp1 exp2 exp3) = do
+   checkExp env exp1 Type_bool
+   inferBinEq env exp2 exp3
 
 
 checkNum :: Type -> Err Type
