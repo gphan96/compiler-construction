@@ -75,17 +75,20 @@ checkDef env (DFun t id args stms) = case checkTypesDef env [t] of
       Ok env2 -> case checkArgs (newBlock env2) args of
          Bad err -> Bad err
          Ok env3 -> checkStms env3 stms
-checkDef (env, functs, struct) (DStruct (Id id) fields) = Ok (env, functs, struct)
+checkDef env (DStruct id fields) = checkStruct env id fields
 
 insertStruct :: Env -> Id -> [Field] -> Err Env
 insertStruct (env, functs, struct) id fields =
    if length (nub ids) /= length ids then
       Bad "Duplicate variable occurrence in struct"
-   else case checkTypesDefV (env, functs, struct) types of
-      Ok _ -> Ok (env, functs, Map.insert id [(ident, t) | (FDecl t ident) <- fields] struct)
-      Bad err -> Bad err
+   else Ok $ (env, functs, Map.insert id [(ident, t) | (FDecl t ident) <- fields] struct)
    where ids = [ident | (FDecl t ident) <- fields]
-         types = [t | (FDecl t ident) <- fields]
+
+checkStruct :: Env -> Id -> [Field] -> Err Env
+checkStruct (env, functs, struct) id fields = do
+   checkTypesDefV (env, functs, struct) types
+   return (env, functs, struct)
+   where types = [t | (FDecl t ident) <- fields]
 
 insertFunct :: Env -> Id -> Func -> Err Env
 insertFunct (env, functs, struct) id func =
