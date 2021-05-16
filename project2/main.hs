@@ -292,14 +292,12 @@ inferExp env (EEq exp1 exp2) = do
    typ1 <- inferExp env exp1
    typ2 <- inferExp env exp2
    checkTypesDef env [typ1, typ2]
-   implTypeConv typ1 typ2
    return Type_bool
 
 inferExp env (ENEq exp1 exp2) = do
    typ1 <- inferExp env exp1
    typ2 <- inferExp env exp2
    checkTypesDef env [typ1, typ2]
-   implTypeConv typ1 typ2
    return Type_bool
 
 inferExp env (EAnd exp1 exp2) = do
