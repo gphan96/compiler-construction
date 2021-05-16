@@ -264,13 +264,18 @@ inferExp env (EDiv exp1 exp2) = do
    checkNum typ2
    implTypeConv typ1 typ2
 
--- inferExp env (EPlus exp1 exp2) =    -- TODO
+inferExp env (EPlus exp1 exp2) = do
+   typ1 <- inferExp env exp1
+   typ2 <- inferExp env exp2
+   checkNum typ1
+   checkNum typ2
+   implTypeConv typ1 typ2
 
 inferExp env (EMinus exp1 exp2) = inferArithmBin env exp1 exp2
 
 inferExp env (ETwc exp1 exp2) = returnComparison env Type_int exp1 exp2
 
--- inferExp env (ELt exp1 exp2) =      -- TODO
+inferExp env (ELt exp1 exp2) = returnComparison env Type_bool exp1 exp2
 
 inferExp env (EGt exp1 exp2) = returnComparison env Type_bool exp1 exp2
 inferExp env (ELtEq exp1 exp2) = do
