@@ -147,16 +147,16 @@ checkStm env (SExp exp) = case inferExp env exp of
                           Bad err -> Bad err
                           Ok _    -> Ok env
 checkStm env (SDecls t idins) = checkIdins env t idins
-checkStm env (SReturn exp) = case lookupFunc env of
-  Ok (Id id, Func (args, ret)) -> case checkExp env exp ret of
-    Ok _ -> Ok env
-    Bad err -> Bad $ "Invalid conversion to '" ++ printTree ret ++ "' in function " ++ printTree id
+checkStm env (SReturn exp) = do
+  let Ok (_, Func (args, ret)) = lookupFunc env
+  checkExp env exp ret
+  return env
 
-checkStm env SReturnV = case lookupFunc env of
-  Ok (id, Func (args, ret)) -> case ret of
-    Type_void -> Ok env
-    _         -> Bad $ "return-statement without a value, in function '" ++ show id ++ "' returning '" ++ printTree ret
-  Bad err -> Bad err
+checkStm env SReturnV = do
+  let Ok (id, Func (args, ret)) = lookupFunc env
+  if ret == Type_void then
+    return env
+  else  Bad $ "return-statement without a value, in function '" ++ show id ++ "' returning '" ++ printTree ret
 
 
 checkStm env (SWhile exp stm) = do                         --Task 2
