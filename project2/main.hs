@@ -16,7 +16,6 @@ import           PrintCPP
 
 type Struct = [(Id,Type)]
 type Func = ([Type], Type)
-type CFunc = (Id, Entry)
 
 data Entry = Var Type | Func Func deriving Show
 
