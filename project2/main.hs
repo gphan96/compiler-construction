@@ -226,12 +226,12 @@ inferExp env (EUMinus exp) =  inferUnary env exp
 
 inferExp env (ETimes exp1 exp2) = inferArithm env exp1 exp2
 inferExp env (EDiv exp1 exp2)   = inferArithm env exp1 exp2
-inferExp env (EPlus exp1 exp2)  = Bad "TODO"
+inferExp env (EPlus exp1 exp2)  = inferArithm env exp1 exp2
 inferExp env (EMinus exp1 exp2) = inferArithm env exp1 exp2
 
 inferExp env (ETwc exp1 exp2) = inferComp env exp1 exp2 Type_int
 
-inferExp env (ELt exp1 exp2)   = Bad "TODO"
+inferExp env (ELt exp1 exp2)   = inferComp env exp1 exp2 Type_bool
 inferExp env (EGt exp1 exp2)   = inferComp env exp1 exp2 Type_bool
 inferExp env (ELtEq exp1 exp2) = inferComp env exp1 exp2 Type_bool
 inferExp env (EGtEq exp1 exp2) = inferComp env exp1 exp2 Type_bool
