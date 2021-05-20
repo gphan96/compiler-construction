@@ -2,7 +2,7 @@ typecheck functions
 auxiliary functions
 
 Noah:
-do-while, +, <, return, returnv, block, eq, ne, and, or
+do-while, +, <, return, returnv, block, eq, ne, and, or --- DONE
 
 Giang:
 while, -, >, true, false, int, double, assignments, ternary --- DONE
