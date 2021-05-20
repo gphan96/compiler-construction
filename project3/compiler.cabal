@@ -1,0 +1,25 @@
+name:                compiler
+version:             1.0.0.0
+build-type:          Simple
+cabal-version:       >=1.10
+
+executable compiler
+  default-language:    Haskell2010
+  main-is:             main.hs
+  ld-options:          -static
+  other-modules:
+    AbsCPP
+    ErrM
+    LexCPP
+    ParCPP
+    PrintCPP
+    Typechecker
+    Codegenerator
+
+  build-depends:
+      base                 >= 4.7 && <5
+    , array
+    , containers
+    , llvm-hs >= 9.0.0 && < 10.0.0
+    , llvm-hs-pure >= 9.0.0 && < 10.0.0
+  hs-source-dirs:      .

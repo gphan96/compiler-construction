@@ -1,0 +1,79 @@
+PDefs.   Program ::= [Def] ;
+
+DFun.    Def    ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
+DStruct. Def    ::= "struct" Id "{" [Field] "}" ";" ;
+
+terminator Def "" ;
+
+FDecl.   Field  ::= Type Id ;
+
+terminator nonempty Field ";" ;
+
+ADecl.   Arg    ::= Type Id ;
+
+separator Arg "," ;
+
+SExp.    Stm    ::= Exp ";" ;
+SDecls.  Stm    ::= Type [IdIn] ";" ;
+SReturn. Stm    ::= "return" Exp ";" ;
+SReturnV.Stm    ::= "return" ";" ;
+SWhile.  Stm    ::= "while" "(" Exp ")" Stm ;
+SDoWhile.Stm    ::= "do" Stm "while" "(" Exp ")" ";" ;
+SFor.    Stm    ::= "for" "(" Exp ";" Exp ";" Exp ")" Stm ;
+SBlock.  Stm    ::= "{" [Stm] "}" ;
+SIfElse. Stm    ::= "if" "(" Exp ")" Stm "else" Stm ;
+
+terminator Stm "" ;
+
+IdNoInit.   IdIn    ::= Id ;
+IdInit.     IdIn    ::= Id "=" Exp ;
+
+separator nonempty IdIn "," ;
+
+ETrue.   Exp15  ::= "true" ;
+EFalse.  Exp15  ::= "false" ;
+EInt.    Exp15  ::= Integer ;
+EDouble. Exp15  ::= Double ;
+EId.     Exp15  ::= Id ; 
+
+EApp.    Exp14  ::= Id "(" [Exp] ")" ;
+
+EProj.   Exp14  ::= Exp14 "." Id ;
+
+EPIncr.  Exp14  ::= Exp14 "++" ;
+EPDecr.  Exp14  ::= Exp14 "--" ;
+
+EIncr.   Exp13  ::= "++" Exp13 ;
+EDecr.   Exp13  ::= "--" Exp13 ;
+EUPlus.  Exp13  ::= "+" Exp13 ;
+EUMinus. Exp13  ::= "-" Exp13 ;
+
+ETimes.  Exp12  ::= Exp12 "*"   Exp13 ;
+EDiv.    Exp12  ::= Exp12 "/"   Exp13 ;
+EPlus.   Exp11  ::= Exp11 "+"   Exp12 ;
+EMinus.  Exp11  ::= Exp11 "-"   Exp12 ;
+ETwc.    Exp10  ::= Exp10 "<=>" Exp11 ;
+ELt.     Exp9   ::= Exp9  "<"   Exp10 ;
+EGt.     Exp9   ::= Exp9  ">"   Exp10 ;
+ELtEq.   Exp9   ::= Exp9  "<="  Exp10 ;
+EGtEq.   Exp9   ::= Exp9  ">="  Exp10 ;
+EEq.     Exp8   ::= Exp8  "=="  Exp9 ;
+ENEq.    Exp8   ::= Exp8  "!="  Exp9 ;
+EAnd.    Exp4   ::= Exp4  "&&"  Exp5 ;
+EOr.     Exp3   ::= Exp3  "||"  Exp4 ;
+EAss.    Exp2   ::= Exp3 "=" Exp2 ;
+ECond.   Exp2   ::= Exp3 "?" Exp ":" Exp2 ;
+
+coercions Exp 15 ;
+
+separator Exp "," ;
+
+rules Type   ::= "bool" | "int" | "double" | "void" | Id ;
+
+token Id (letter (letter | digit | '_')*) ;
+
+separator nonempty Id "," ;
+
+comment "#" ;
+comment "//" ;
+comment "/*" "*/" ;

@@ -5,7 +5,6 @@ bnfc
 .stack-work
 AbsCPP.hs
 compiler
-compiler.cabal
 DocCPP.txt
 ErrM.hs
 LexCPP.*
