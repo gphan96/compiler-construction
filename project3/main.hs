@@ -10,6 +10,8 @@ import           PrintCPP
 import Typechecker
 import Codegenerator
 
+import qualified Data.ByteString.Short as BS
+
 process :: String -> IO ()
 process s = case pProgram (myLexer s) of
             Bad err  -> do putStrLn "SYNTAX ERROR"
@@ -19,7 +21,8 @@ process s = case pProgram (myLexer s) of
                         Bad err -> do putStrLn "TYPE ERROR"
                                       putStrLn err
                                       exitFailure
-                        Ok _    -> Codegenerator.generateCode tree
+                        Ok _    -> do Codegenerator.codegen (Codegenerator.emptyModule Codegenerator.entryBlockName) tree
+                                      return ()
 
 main :: IO ()
 main = do args <- getArgs
