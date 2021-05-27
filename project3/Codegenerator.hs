@@ -214,6 +214,9 @@ getvar var = do
 -- Compilation
 -------------------------------------------------------------------------------
 
+moduleTitle :: BS.ShortByteString
+moduleTitle = "module"
+
 codegen :: AST.Module -> Program -> IO AST.Module
 codegen mod (PDefs fns) = withContext $ \context ->
     withModuleFromAST context newast $ \m -> do

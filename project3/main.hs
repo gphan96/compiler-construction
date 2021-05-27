@@ -8,7 +8,7 @@ import           ParCPP
 import           PrintCPP
 
 import Typechecker
-import Codegenerator
+import qualified Codegenerator as C
 
 import qualified Data.ByteString.Short as BS
 
@@ -21,7 +21,7 @@ process s = case pProgram (myLexer s) of
                         Bad err -> do putStrLn "TYPE ERROR"
                                       putStrLn err
                                       exitFailure
-                        Ok _    -> do Codegenerator.codegen (Codegenerator.emptyModule Codegenerator.entryBlockName) tree
+                        Ok _    -> do C.codegen (C.emptyModule C.moduleTitle) tree
                                       return ()
 
 main :: IO ()
