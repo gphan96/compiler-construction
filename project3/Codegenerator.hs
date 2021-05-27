@@ -211,6 +211,17 @@ getvar var = do
         Nothing -> error $ "Local variable not in scope: " ++ show var
 
 -------------------------------------------------------------------------------
+-- Type Mapping
+-------------------------------------------------------------------------------
+
+typeMap :: AbsCPP.Type -> AST.Type
+typeMap Type_bool = IntegerType { typeBits = 1 }
+typeMap Type_int = IntegerType { typeBits = 32 }
+typeMap Type_double = FloatingPointType { floatingPointType = DoubleFP }
+typeMap Type_void = VoidType
+typeMap (TypeId id) = StructureType { isPacked = False, elementTypes = [] }
+
+-------------------------------------------------------------------------------
 -- Compilation
 -------------------------------------------------------------------------------
 
@@ -228,5 +239,7 @@ codegen mod (PDefs fns) = withContext $ \context ->
         newast  = runLLVM mod modn
 
 codegenTop :: Def -> LLVM ()
-codegenTop def = do
-    return ()
+codegenTop (DFun t (Id id) arg stms) = do
+    define (typeMap t) (BS.toShort $ B.Char8.pack id) args []
+    where
+        args = map (\(ADecl typ (Id ide)) -> (typeMap typ, Name $ BS.toShort $ B.Char8.pack ide)) arg
