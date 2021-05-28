@@ -20,8 +20,9 @@ process s = case pProgram (myLexer s) of
             Ok  tree -> case Typechecker.typecheck tree of
                         Bad err -> do putStrLn "TYPE ERROR"
                                       putStrLn err
+                                      putStrLn $ printTree tree
                                       exitFailure
-                        Ok _    -> do C.codegen (C.emptyModule C.moduleTitle) tree
+                        Ok tast -> do C.codegen (C.emptyModule C.moduleTitle) tast
                                       return ()
 
 main :: IO ()

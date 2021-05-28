@@ -13,6 +13,7 @@ executable compiler
     LexCPP
     ParCPP
     PrintCPP
+    TypedAST
     Typechecker
     Codegenerator
 

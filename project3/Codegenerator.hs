@@ -3,11 +3,12 @@
 
 module Codegenerator where
 
-import           AbsCPP
-import           ErrM
-import           LexCPP
-import           ParCPP
-import           PrintCPP
+import AbsCPP
+import ErrM
+import LexCPP
+import ParCPP
+import PrintCPP
+import qualified TypedAST as TA
 
 import Data.Word
 import Data.String
@@ -258,8 +259,8 @@ ret val = terminator $ Do $ Ret (Just val) []
 moduleTitle :: BS.ShortByteString
 moduleTitle = "module"
 
-codegen :: AST.Module -> Program -> IO AST.Module
-codegen mod (PDefs defs) = withContext $ \context ->
+codegen :: AST.Module -> TA.ProgramT -> IO AST.Module
+codegen mod (TA.PDefs defs) = withContext $ \context ->
     withModuleFromAST context newast $ \m -> do
         llstr <- moduleLLVMAssembly m
         B.Char8.putStrLn llstr
@@ -268,8 +269,8 @@ codegen mod (PDefs defs) = withContext $ \context ->
         modn    = mapM codegenTop defs
         newast  = runLLVM mod modn
 
-codegenTop :: Def -> LLVM ()
-codegenTop (DFun t (Id id) arg stms) = do
+codegenTop :: TA.DefT -> LLVM ()
+codegenTop (TA.DFun t (Id id) arg stms) = do
     define (typeMap t) (BS.toShort $ B.Char8.pack id) args bls
     where
         args = map (\(ADecl typ (Id ide)) -> (typeMap typ, Name $ BS.toShort $ B.Char8.pack ide)) arg
