@@ -27,6 +27,7 @@ import LLVM.Context
 import LLVM.AST
 import LLVM.AST.Global
 import qualified LLVM.AST as AST
+import qualified LLVM.AST.CallingConvention as CC
 
 
 -------------------------------------------------------------------------------
@@ -138,14 +139,24 @@ fresh = do
     modify $ \s -> s { count = 1 + i }
     return $ i + 1
 
-{--instr :: Instruction -> Codegen (Operand)
-instr ins = do
+instr :: Instruction -> AST.Type -> Codegen (Operand)
+instr ins t = do
     n <- fresh
     let ref = (UnName n)
     blk <- current
     let i = stack blk
     modifyBlock (blk { stack = (ref := ins) : i } )
-    return $ local ref--}
+    return $ local t ref
+
+instrStore :: Instruction -> Codegen ()
+instrStore ins = do
+    blk <- current
+    let i = stack blk
+    modifyBlock (blk { stack = (Do ins) : i } )
+    return ()
+
+local :: AST.Type -> Name -> Operand
+local name typ = LocalReference name typ
 
 terminator :: Named Terminator -> Codegen (Named Terminator)
 terminator trm = do
@@ -222,6 +233,25 @@ typeMap Type_void = VoidType
 typeMap (TypeId id) = StructureType { isPacked = False, elementTypes = [] }
 
 -------------------------------------------------------------------------------
+-- Operators
+-------------------------------------------------------------------------------
+
+call :: Operand -> [Operand] -> AST.Type -> Codegen Operand
+call fn args t = instr (Call Nothing CC.C [] (Right fn) (map (\x -> (x, [])) args) [] []) t
+
+alloca :: AST.Type -> Codegen Operand
+alloca ty = instr (Alloca ty Nothing 0 []) ty
+
+store :: Operand -> Operand -> Codegen ()
+store ptr val = instrStore (Store False ptr val Nothing 0 [])
+
+load :: Operand -> AST.Type -> Codegen Operand
+load ptr t = instr (Load False ptr Nothing 0 []) t
+
+ret :: Operand -> Codegen (Named Terminator)
+ret val = terminator $ Do $ Ret (Just val) []
+
+-------------------------------------------------------------------------------
 -- Compilation
 -------------------------------------------------------------------------------
 
@@ -229,17 +259,26 @@ moduleTitle :: BS.ShortByteString
 moduleTitle = "module"
 
 codegen :: AST.Module -> Program -> IO AST.Module
-codegen mod (PDefs fns) = withContext $ \context ->
+codegen mod (PDefs defs) = withContext $ \context ->
     withModuleFromAST context newast $ \m -> do
         llstr <- moduleLLVMAssembly m
         B.Char8.putStrLn llstr
         return newast
     where
-        modn    = mapM codegenTop fns
+        modn    = mapM codegenTop defs
         newast  = runLLVM mod modn
 
 codegenTop :: Def -> LLVM ()
 codegenTop (DFun t (Id id) arg stms) = do
-    define (typeMap t) (BS.toShort $ B.Char8.pack id) args []
+    define (typeMap t) (BS.toShort $ B.Char8.pack id) args bls
     where
         args = map (\(ADecl typ (Id ide)) -> (typeMap typ, Name $ BS.toShort $ B.Char8.pack ide)) arg
+        bls = createBlocks $ execCodegen $ do
+            entry <- addBlock entryBlockName
+            setBlock entry
+            forM arg $ \(ADecl typ2 (Id id2)) -> do
+                var <- alloca $ typeMap typ2
+                store var $ local (typeMap typ2) (Name $ BS.toShort $ B.Char8.pack id2)
+                assign (BS.toShort $ B.Char8.pack id2) var
+            retVal <- alloca $ typeMap t -- These two lines are nonsense and just here, since every block needs a terminator. Else llvm throws an error.
+            ret retVal
