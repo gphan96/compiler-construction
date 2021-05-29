@@ -266,11 +266,11 @@ codegen mod (TA.PDefs defs) = withContext $ \context ->
         B.Char8.putStrLn llstr
         return newast
     where
-        modn    = mapM codegenTop defs
+        modn    = mapM codegenDef defs
         newast  = runLLVM mod modn
 
-codegenTop :: TA.DefT -> LLVM ()
-codegenTop (TA.DFun t (Id id) arg stms) = do
+codegenDef :: TA.DefT -> LLVM ()
+codegenDef (TA.DFun t (Id id) arg stms) = do
     define (typeMap t) (BS.toShort $ B.Char8.pack id) args bls
     where
         args = map (\(ADecl typ (Id ide)) -> (typeMap typ, Name $ BS.toShort $ B.Char8.pack ide)) arg
@@ -283,3 +283,45 @@ codegenTop (TA.DFun t (Id id) arg stms) = do
                 assign (BS.toShort $ B.Char8.pack id2) var
             retVal <- alloca $ typeMap t -- These two lines are nonsense and just here, since every block needs a terminator. Else llvm throws an error.
             ret retVal
+codegenDef (TA.DStruct id fields) = do return ()
+        
+codegenStm :: TA.StmT -> LLVM ()
+codegenStm (TA.SExp exp) = do return ()
+codegenStm (TA.SDecls t idins) = do return ()
+codegenStm (TA.SReturn exp) = do return ()
+codegenStm TA.SReturnV = do return ()
+codegenStm (TA.SWhile exp stm) = do return ()
+codegenStm (TA.SDoWhile stm exp) = do return ()
+codegenStm (TA.SFor exp1 exp2 exp3 stm) = do return ()
+codegenStm (TA.SBlock stms) = do return ()
+codegenStm (TA.SIfElse exp stm1 stm2) = do return ()
+
+codegenExp :: TA.ExpT -> LLVM ()
+codegenExp (TA.ETrue, typ) = do return ()
+codegenExp (TA.EFalse, typ)= do return ()
+codegenExp ((TA.EInt int), typ) = do return ()
+codegenExp ((TA.EDouble double), typ) = do return ()
+codegenExp ((TA.EId id), typ) = do return ()
+codegenExp ((TA.EApp id exps), typ) = do return ()
+codegenExp ((TA.EProj exp id), typ) = do return ()
+codegenExp ((TA.EPIncr exp), typ) = do return ()
+codegenExp ((TA.EPDecr exp), typ) = do return ()
+codegenExp ((TA.EIncr exp), typ) = do return ()
+codegenExp ((TA.EDecr exp), typ) = do return ()
+codegenExp ((TA.EUPlus exp), typ) = do return ()
+codegenExp ((TA.EUMinus exp), typ) = do return ()
+codegenExp ((TA.ETimes exp1 exp2), typ) = do return ()
+codegenExp ((TA.EDiv exp1 exp2), typ) = do return ()
+codegenExp ((TA.EPlus exp1 exp2), typ) = do return ()
+codegenExp ((TA.EMinus exp1 exp2), typ) = do return ()
+codegenExp ((TA.ETwc exp1 exp2), typ) = do return ()
+codegenExp ((TA.ELt exp1 exp2), typ) = do return ()
+codegenExp ((TA.EGt exp1 exp2), typ) = do return ()
+codegenExp ((TA.ELtEq exp1 exp2), typ) = do return ()
+codegenExp ((TA.EGtEq exp1 exp2), typ) = do return ()
+codegenExp ((TA.EEq exp1 exp2), typ) = do return ()
+codegenExp ((TA.ENEq exp1 exp2), typ) = do return ()
+codegenExp ((TA.EAnd exp1 exp2), typ) = do return ()
+codegenExp ((TA.EOr exp1 exp2), typ) = do return ()
+codegenExp ((TA.EAss exp1 exp2), typ) = do return ()
+codegenExp ((TA.ECond exp1 exp2 exp3), typ) = do return ()
