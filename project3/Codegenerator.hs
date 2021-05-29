@@ -90,7 +90,7 @@ data CodegenState
     = CodegenState {
       currentBlock :: Name                     -- Name of the active block to append to
     , blocks       :: Map.Map Name BlockState  -- Blocks for function
-    , symtab       :: SymbolTable              -- Function scope symbol table
+    , symtab       :: [SymbolTable]            -- Function scope symbol table
     , blockCount   :: Int                      -- Count of basic blocks
     , count        :: Word                     -- Count of unnamed instructions
     , names        :: Names                    -- Name Supply
@@ -129,7 +129,7 @@ emptyBlock :: Int -> BlockState
 emptyBlock i = BlockState i [] Nothing
 
 emptyCodegen :: CodegenState
-emptyCodegen = CodegenState (Name entryBlockName) Map.empty [] 1 0 Map.empty
+emptyCodegen = CodegenState (Name entryBlockName) Map.empty [[]] 1 0 Map.empty
 
 execCodegen :: Codegen a -> CodegenState
 execCodegen m = execState (runCodegen m) emptyCodegen
@@ -209,15 +209,19 @@ current = do
 
 assign :: BS.ShortByteString -> Operand -> Codegen ()
 assign var x = do
-    lcls <- gets symtab
-    modify $ \s -> s { symtab = [(var, x)] ++ lcls }
+    tables <- gets symtab
+    modify $ \s -> s { symtab = [[(var, x)] ++ head tables] ++ tail tables }
 
 getvar :: BS.ShortByteString -> Codegen Operand
 getvar var = do
-    syms <- gets symtab
-    case lookup var syms of
-        Just x  -> return x
-        Nothing -> error $ "Local variable not in scope: " ++ show var
+    tables <- gets symtab
+    getvarTable var tables
+
+getvarTable :: BS.ShortByteString -> [SymbolTable] -> Codegen Operand
+getvarTable var [] = error $ "Local variable not in scope: " ++ show var
+getvarTable var (syms:xs) = case lookup var syms of
+    Just x  -> return x
+    Nothing -> getvarTable var xs
 
 -------------------------------------------------------------------------------
 -- Type Mapping
