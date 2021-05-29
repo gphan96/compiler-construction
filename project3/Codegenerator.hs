@@ -149,15 +149,12 @@ instr ins t = do
     modifyBlock (blk { stack = (ref := ins) : i } )
     return $ local t ref
 
-instrStore :: Instruction -> Codegen ()
-instrStore ins = do
+instrVoid :: Instruction -> Codegen ()
+instrVoid ins = do
     blk <- current
     let i = stack blk
     modifyBlock (blk { stack = (Do ins) : i } )
     return ()
-
-local :: AST.Type -> Name -> Operand
-local name typ = LocalReference name typ
 
 terminator :: Named Terminator -> Codegen (Named Terminator)
 terminator trm = do
@@ -237,6 +234,9 @@ typeMap (TypeId id) = StructureType { isPacked = False, elementTypes = [] }
 -- Operators
 -------------------------------------------------------------------------------
 
+local :: AST.Type -> Name -> Operand
+local name typ = LocalReference name typ
+
 call :: Operand -> [Operand] -> AST.Type -> Codegen Operand
 call fn args t = instr (Call Nothing CC.C [] (Right fn) (map (\x -> (x, [])) args) [] []) t
 
@@ -244,7 +244,7 @@ alloca :: AST.Type -> Codegen Operand
 alloca ty = instr (Alloca ty Nothing 0 []) ty
 
 store :: Operand -> Operand -> Codegen ()
-store ptr val = instrStore (Store False ptr val Nothing 0 [])
+store ptr val = instrVoid (Store False ptr val Nothing 0 [])
 
 load :: Operand -> AST.Type -> Codegen Operand
 load ptr t = instr (Load False ptr Nothing 0 []) t
