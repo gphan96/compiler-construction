@@ -1,13 +1,6 @@
 
-int main() {
-	false;
-	false;
-	true;
+int main(int i) {
+	int abc, cde, edf;
 
-	return 0;
-}
-
-void fun() {
-	1.23;
-	32;
+	int a = abc;
 }

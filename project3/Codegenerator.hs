@@ -28,6 +28,7 @@ import LLVM.Context
 import LLVM.AST
 import LLVM.AST.Global
 import qualified LLVM.AST as AST
+import qualified LLVM.AST.Type as T
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
 import qualified LLVM.AST.CallingConvention as CC
@@ -271,6 +272,9 @@ load ptr t = instr (Load False ptr Nothing 0 []) t
 ret :: Operand -> Codegen (Named Terminator)
 ret val = terminator $ Do $ Ret (Just val) []
 
+retVoid :: Codegen (Named Terminator)
+retVoid = terminator $ Do $ Ret Nothing []
+
 -------------------------------------------------------------------------------
 -- Compilation
 -------------------------------------------------------------------------------
@@ -305,17 +309,26 @@ codegenDef (TA.DFun t (Id id) arg stms) = do
                 store var $ local (typeMap typ2) (Name $ strToShort id2)
                 assign (strToShort id2) var
             mapM codegenStm stms
-            retVal <- alloca $ typeMap t -- These two lines are nonsense and just here, since every block needs a terminator. Else llvm throws an error.
-            ret retVal
+            case last stms of
+                (TA.SReturnV) -> return ()
+                (TA.SReturn _) -> return ()
+                _ -> do
+                    retVoid
+                    return ()
 codegenDef (TA.DStruct id fields) = do return ()
         
 codegenStm :: TA.StmT -> Codegen ()
 codegenStm (TA.SExp exp) = do
     codegenExp exp
     return ()
-codegenStm (TA.SDecls t idins) = do return ()
-codegenStm (TA.SReturn exp) = do return ()
-codegenStm TA.SReturnV = do return ()
+codegenStm (TA.SDecls t idins) = codegenIdins t idins
+codegenStm (TA.SReturn exp) = do
+    var <- codegenExp exp
+    ret var
+    return ()
+codegenStm TA.SReturnV = do
+    retVoid
+    return ()
 codegenStm (TA.SWhile exp stm) = do return ()
 codegenStm (TA.SDoWhile stm exp) = do return ()
 codegenStm (TA.SFor exp1 exp2 exp3 stm) = do return ()
@@ -324,6 +337,22 @@ codegenStm (TA.SBlock stms) = do
     mapM codegenStm stms
     deleteTable
 codegenStm (TA.SIfElse exp stm1 stm2) = do return ()
+
+codegenIdins :: AbsCPP.Type -> [TA.IdInT] -> Codegen ()
+codegenIdins t idins = do
+    forM idins $ \idin -> do
+        codegenIdin t idin
+    return ()
+
+codegenIdin :: AbsCPP.Type -> TA.IdInT -> Codegen ()
+codegenIdin t (TA.IdNoInit (Id id)) = do
+    var <- alloca $ typeMap t
+    assign (strToShort id) var
+codegenIdin t (TA.IdInit (Id id) exp) = do
+    res <- codegenExp exp
+    var <- alloca $ typeMap t
+    store var res
+    assign (strToShort id) var
 
 codegenExp :: TA.ExpT -> Codegen Operand
 codegenExp (TA.ETrue, typ) = do
@@ -340,7 +369,9 @@ codegenExp ((TA.EInt int), typ) = do
                           }
 codegenExp ((TA.EDouble double), typ) = do
     return $ cons $ C.Float { C.floatValue = (F.Double double) }
-codegenExp ((TA.EId (Id id)), typ) = getvar $ strToShort id
+codegenExp ((TA.EId (Id id)), typ) = do
+    ptr <- getvar $ strToShort id
+    load ptr $ typeMap typ
 codegenExp ((TA.EApp id exps), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.EProj exp id), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.EPIncr exp), typ) = do return $ local VoidType (Name "not implemented")
