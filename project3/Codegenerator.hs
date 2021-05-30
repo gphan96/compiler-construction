@@ -396,8 +396,8 @@ codegenStm (TA.SReturn exp) = do
 codegenStm TA.SReturnV = do
     retVoid
     return ()
-codegenStm (TA.SWhile exp stm) = do return ()
-codegenStm (TA.SDoWhile stm exp) = do return ()
+codegenStm (TA.SWhile exp stm) = do return () -- Task 2
+codegenStm (TA.SDoWhile stm exp) = do return () -- Task 1
 codegenStm (TA.SFor exp1 exp2 exp3 stm) = do
     forCond <- addBlock $ strToShort "forCond"
     forLoop <- addBlock $ strToShort "forLoop"
@@ -417,7 +417,7 @@ codegenStm (TA.SBlock stms) = do
     addTable
     mapM codegenStm stms
     deleteTable
-codegenStm (TA.SIfElse exp stm1 stm2) = do return ()
+codegenStm (TA.SIfElse exp stm1 stm2) = do return () -- Task 4
 
 codegenIdins :: AbsCPP.Type -> [TA.IdInT] -> Codegen ()
 codegenIdins t idins = do
@@ -479,12 +479,12 @@ codegenExp ((TA.ETimes exp1 exp2), typ) = case typ of
         res <- fmul (intToDouble var1) (intToDouble var2)
         return res
     _ -> do return $ local VoidType (Name "IMPOSSIBLE")
-codegenExp ((TA.EDiv exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
-codegenExp ((TA.EPlus exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
-codegenExp ((TA.EMinus exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EDiv exp1 exp2), typ) = do return $ local VoidType (Name "not implemented") -- Task 4
+codegenExp ((TA.EPlus exp1 exp2), typ) = do return $ local VoidType (Name "not implemented") -- Task 1
+codegenExp ((TA.EMinus exp1 exp2), typ) = do return $ local VoidType (Name "not implemented") -- Task 2
 codegenExp ((TA.ETwc exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
-codegenExp ((TA.ELt exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
-codegenExp ((TA.EGt exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.ELt exp1 exp2), typ) = do return $ local VoidType (Name "not implemented") -- Task 1
+codegenExp ((TA.EGt exp1 exp2), typ) = do return $ local VoidType (Name "not implemented") -- Task2
 codegenExp ((TA.ELtEq (e1, t1) (e2, t2)), typ) = case typeConv t1 t2 of
     Type_int -> do
         var1 <- codegenExp (e1, t1)
@@ -497,10 +497,17 @@ codegenExp ((TA.ELtEq (e1, t1) (e2, t2)), typ) = case typeConv t1 t2 of
         res <- fcmp FP.OLE (intToDouble var1) (intToDouble var2)
         return res
     _ -> do return $ local VoidType (Name "IMPOSSIBLE")
-codegenExp ((TA.EGtEq exp1 exp2), typ) = do return  $ local VoidType (Name "not implemented")
+codegenExp ((TA.EGtEq exp1 exp2), typ) = do return  $ local VoidType (Name "not implemented") -- Task 4
 codegenExp ((TA.EEq exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.ENEq exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.EAnd exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.EOr exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
-codegenExp ((TA.EAss exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EAss exp1 exp2), typ) = case exp1 of
+    (TA.EId (Id id), t) -> do
+        res <- codegenExp exp2
+        var <- alloca $ typeMap t
+        store var res
+        assign (strToShort id) var
+        return res
+    _ -> do return $ local VoidType (Name "not implemented") 
 codegenExp ((TA.ECond exp1 exp2 exp3), typ) = do return $ local VoidType (Name "not implemented")

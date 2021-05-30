@@ -1,4 +1,6 @@
 
 bool main() {
-	return 10.0 <= 53;
+	bool b = true;
+	b = 3 <= 5;
+	return b;
 }
