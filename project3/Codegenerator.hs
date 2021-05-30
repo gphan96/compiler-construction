@@ -28,6 +28,7 @@ import LLVM.Context
 import LLVM.AST
 import LLVM.AST.Global
 import qualified LLVM.AST as AST
+import qualified LLVM.AST.AddrSpace as A
 import qualified LLVM.AST.Type as T
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
@@ -241,10 +242,10 @@ deleteTable = do
 -------------------------------------------------------------------------------
 
 typeMap :: AbsCPP.Type -> AST.Type
-typeMap Type_bool = IntegerType { typeBits = 1 }
-typeMap Type_int = IntegerType { typeBits = 32 }
-typeMap Type_double = FloatingPointType { floatingPointType = DoubleFP }
-typeMap Type_void = VoidType
+typeMap Type_bool = T.i1
+typeMap Type_int = T.i32
+typeMap Type_double = T.double
+typeMap Type_void = T.void
 typeMap (TypeId id) = StructureType { isPacked = False, elementTypes = [] }
 
 -------------------------------------------------------------------------------
@@ -254,11 +255,17 @@ typeMap (TypeId id) = StructureType { isPacked = False, elementTypes = [] }
 local :: AST.Type -> Name -> Operand
 local typ name = LocalReference typ name
 
+externf :: BS.ShortByteString -> AST.Type -> [AST.Type] -> Operand
+externf name retty argtys = ConstantOperand $ C.GlobalReference (PointerType (FunctionType retty argtys False) (A.AddrSpace 0)) (Name name)
+
 cons :: C.Constant -> Operand
 cons c = ConstantOperand c
 
 call :: Operand -> [Operand] -> AST.Type -> Codegen Operand
 call fn args t = instr (Call Nothing CC.C [] (Right fn) (map (\x -> (x, [])) args) [] []) t
+
+callVoid :: Operand -> [Operand] -> Codegen ()
+callVoid fn args = instrVoid (Call Nothing CC.C [] (Right fn) (map (\x -> (x, [])) args) [] [])
 
 alloca :: AST.Type -> Codegen Operand
 alloca ty = instr (Alloca ty Nothing 0 []) ty
@@ -309,7 +316,10 @@ codegenDef (TA.DFun t (Id id) arg stms) = do
                 store var $ local (typeMap typ2) (Name $ strToShort id2)
                 assign (strToShort id2) var
             mapM codegenStm stms
-            case last stms of
+            if stms == [] then do
+                retVoid
+                return ()
+            else case last stms of
                 (TA.SReturnV) -> return ()
                 (TA.SReturn _) -> return ()
                 _ -> do
@@ -372,7 +382,17 @@ codegenExp ((TA.EDouble double), typ) = do
 codegenExp ((TA.EId (Id id)), typ) = do
     ptr <- getvar $ strToShort id
     load ptr $ typeMap typ
-codegenExp ((TA.EApp id exps), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EApp (Id id) exps), Type_void) = do
+    args <- mapM codegenExp exps
+    callVoid (externf (strToShort id) T.void argtys) args
+    return $ ConstantOperand $ C.Null T.void
+    where
+        argtys = map (\(e, t) -> typeMap t) exps
+codegenExp ((TA.EApp (Id id) exps), typ) = do
+    args <- mapM codegenExp exps
+    call (externf (strToShort id) (typeMap typ) argtys) args $ typeMap typ
+    where
+        argtys = map (\(e, t) -> typeMap t) exps
 codegenExp ((TA.EProj exp id), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.EPIncr exp), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.EPDecr exp), typ) = do return $ local VoidType (Name "not implemented")

@@ -1,6 +1,8 @@
 
-int main(int i) {
-	int abc, cde, edf;
+int main() {
+	print(10);
+	return 0;
+}
 
-	int a = abc;
+void print(int i) {
 }
