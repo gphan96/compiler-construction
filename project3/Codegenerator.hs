@@ -256,6 +256,14 @@ typeMap Type_void = T.void
 typeMap (TypeId (Id id)) = NamedTypeReference $ Name $ strToShort id
 
 -------------------------------------------------------------------------------
+-- Type Conversion
+-------------------------------------------------------------------------------
+
+intToDouble :: Operand -> Operand
+intToDouble (ConstantOperand (C.Int bits int)) = ConstantOperand $ C.Float $ F.Double $ fromIntegral int
+intToDouble any = any
+
+-------------------------------------------------------------------------------
 -- Operators
 -------------------------------------------------------------------------------
 
@@ -268,11 +276,20 @@ externf name retty argtys = ConstantOperand $ C.GlobalReference (PointerType (Fu
 cons :: C.Constant -> Operand
 cons c = ConstantOperand c
 
+mul :: Operand -> Operand -> Codegen Operand
+mul a b = instr (Mul False False a b []) T.i32
+
+fmul :: Operand -> Operand -> Codegen Operand
+fmul a b = instr (FMul noFastMathFlags a b []) T.double
+
 call :: Operand -> [Operand] -> AST.Type -> Codegen Operand
 call fn args t = instr (Call Nothing CC.C [] (Right fn) (map (\x -> (x, [])) args) [] []) t
 
 callVoid :: Operand -> [Operand] -> Codegen ()
 callVoid fn args = instrVoid (Call Nothing CC.C [] (Right fn) (map (\x -> (x, [])) args) [] [])
+
+getelemptr :: Operand -> [Operand] -> AST.Type -> Codegen Operand
+getelemptr addr idx typ = instr (GetElementPtr False addr idx []) typ
 
 alloca :: AST.Type -> Codegen Operand
 alloca ty = instr (Alloca ty Nothing 0 []) ty
@@ -408,9 +425,19 @@ codegenExp ((TA.EPIncr exp), typ) = do return $ local VoidType (Name "not implem
 codegenExp ((TA.EPDecr exp), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.EIncr exp), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.EDecr exp), typ) = do return $ local VoidType (Name "not implemented")
-codegenExp ((TA.EUPlus exp), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EUPlus exp), typ) = codegenExp exp
 codegenExp ((TA.EUMinus exp), typ) = do return $ local VoidType (Name "not implemented")
-codegenExp ((TA.ETimes exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.ETimes exp1 exp2), typ) = case typ of
+    Type_int -> do
+        var1 <- codegenExp exp1
+        var2 <- codegenExp exp2
+        res <- mul var1 var2
+        return res
+    Type_double -> do
+        var1 <- codegenExp exp1
+        var2 <- codegenExp exp2
+        res <- fmul (intToDouble var1) (intToDouble var2)
+        return res
 codegenExp ((TA.EDiv exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.EPlus exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.EMinus exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")

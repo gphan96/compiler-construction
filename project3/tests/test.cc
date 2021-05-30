@@ -1,17 +1,15 @@
 
-struct b {
-	s s;
-};
-
 struct s {
 	int i;
 };
 
-int main() {
+double main() {
 	print(10);
-	b str;
+	s str;
 
-	return 0;
+	str.i;
+
+	return +(3.1 * 5);
 }
 
 void print(int i) {
