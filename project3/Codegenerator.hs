@@ -33,6 +33,8 @@ import qualified LLVM.AST.Type as T
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Float as F
 import qualified LLVM.AST.CallingConvention as CC
+import qualified LLVM.AST.IntegerPredicate as IP
+import qualified LLVM.AST.FloatingPointPredicate as FP
 
 
 -------------------------------------------------------------------------------
@@ -255,6 +257,16 @@ typeMap Type_double = T.double
 typeMap Type_void = T.void
 typeMap (TypeId (Id id)) = NamedTypeReference $ Name $ strToShort id
 
+true :: Operand
+true = cons $ C.Int { C.integerBits = 1
+                    , C.integerValue = 1 
+                    }
+
+false :: Operand
+false = cons $ C.Int { C.integerBits = 1
+                     , C.integerValue = 0
+                     }
+
 -------------------------------------------------------------------------------
 -- Type Conversion
 -------------------------------------------------------------------------------
@@ -262,6 +274,12 @@ typeMap (TypeId (Id id)) = NamedTypeReference $ Name $ strToShort id
 intToDouble :: Operand -> Operand
 intToDouble (ConstantOperand (C.Int bits int)) = ConstantOperand $ C.Float $ F.Double $ fromIntegral int
 intToDouble any = any
+
+typeConv :: AbsCPP.Type -> AbsCPP.Type -> AbsCPP.Type
+typeConv t1 t2 = 
+    if t1 == t2 then t1
+    else if t1 == Type_double && t2 == Type_int || t2 == Type_double && t1 == Type_int then Type_double
+    else t1 
 
 -------------------------------------------------------------------------------
 -- Operators
@@ -282,6 +300,12 @@ mul a b = instr (Mul False False a b []) T.i32
 fmul :: Operand -> Operand -> Codegen Operand
 fmul a b = instr (FMul noFastMathFlags a b []) T.double
 
+icmp :: IP.IntegerPredicate -> Operand -> Operand -> Codegen Operand
+icmp cond a b = instr (ICmp cond a b []) T.i1
+
+fcmp :: FP.FloatingPointPredicate -> Operand -> Operand -> Codegen Operand
+fcmp cond a b = instr (FCmp cond a b []) T.i1
+
 call :: Operand -> [Operand] -> AST.Type -> Codegen Operand
 call fn args t = instr (Call Nothing CC.C [] (Right fn) (map (\x -> (x, [])) args) [] []) t
 
@@ -299,6 +323,12 @@ store ptr val = instrVoid (Store False ptr val Nothing 0 [])
 
 load :: Operand -> AST.Type -> Codegen Operand
 load ptr t = instr (Load False ptr Nothing 0 []) t
+
+br :: Name -> Codegen (Named Terminator)
+br val = terminator $ Do $ Br val []
+
+cbr :: Operand -> Name -> Name -> Codegen (Named Terminator)
+cbr cond tr fl = terminator $ Do $ CondBr cond tr fl []
 
 ret :: Operand -> Codegen (Named Terminator)
 ret val = terminator $ Do $ Ret (Just val) []
@@ -368,7 +398,21 @@ codegenStm TA.SReturnV = do
     return ()
 codegenStm (TA.SWhile exp stm) = do return ()
 codegenStm (TA.SDoWhile stm exp) = do return ()
-codegenStm (TA.SFor exp1 exp2 exp3 stm) = do return ()
+codegenStm (TA.SFor exp1 exp2 exp3 stm) = do
+    forCond <- addBlock $ strToShort "forCond"
+    forLoop <- addBlock $ strToShort "forLoop"
+    continue <- addBlock $ strToShort "continue"
+    codegenExp exp1
+    br forCond
+    setBlock forCond
+    con <- codegenExp exp2
+    cbr con forLoop continue
+    setBlock forLoop
+    codegenStm stm
+    codegenExp exp3
+    br forCond
+    setBlock continue
+    return ()
 codegenStm (TA.SBlock stms) = do
     addTable
     mapM codegenStm stms
@@ -393,13 +437,9 @@ codegenIdin t (TA.IdInit (Id id) exp) = do
 
 codegenExp :: TA.ExpT -> Codegen Operand
 codegenExp (TA.ETrue, typ) = do
-    return $ cons $ C.Int { C.integerBits = 1
-                          , C.integerValue = 1 
-                          }
+    return true
 codegenExp (TA.EFalse, typ) = do
-    return $ cons $ C.Int { C.integerBits = 1
-                          , C.integerValue = 0 
-                          }
+    return false
 codegenExp ((TA.EInt int), typ) = do
     return $ cons $ C.Int { C.integerBits = 32
                           , C.integerValue = int 
@@ -438,13 +478,25 @@ codegenExp ((TA.ETimes exp1 exp2), typ) = case typ of
         var2 <- codegenExp exp2
         res <- fmul (intToDouble var1) (intToDouble var2)
         return res
+    _ -> do return $ local VoidType (Name "IMPOSSIBLE")
 codegenExp ((TA.EDiv exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.EPlus exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.EMinus exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.ETwc exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.ELt exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.EGt exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
-codegenExp ((TA.ELtEq exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.ELtEq (e1, t1) (e2, t2)), typ) = case typeConv t1 t2 of
+    Type_int -> do
+        var1 <- codegenExp (e1, t1)
+        var2 <- codegenExp (e2, t2)
+        res <- icmp IP.SLE var1 var2
+        return res
+    Type_double -> do
+        var1 <- codegenExp (e1, t1)
+        var2 <- codegenExp (e2, t2)
+        res <- fcmp FP.OLE (intToDouble var1) (intToDouble var2)
+        return res
+    _ -> do return $ local VoidType (Name "IMPOSSIBLE")
 codegenExp ((TA.EGtEq exp1 exp2), typ) = do return  $ local VoidType (Name "not implemented")
 codegenExp ((TA.EEq exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.ENEq exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
