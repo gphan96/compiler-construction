@@ -254,7 +254,7 @@ local :: AST.Type -> Name -> Operand
 local typ name = LocalReference typ name
 
 cons :: C.Constant -> Operand
-cons = ConstantOperand
+cons c = ConstantOperand c
 
 call :: Operand -> [Operand] -> AST.Type -> Codegen Operand
 call fn args t = instr (Call Nothing CC.C [] (Right fn) (map (\x -> (x, [])) args) [] []) t
@@ -275,6 +275,9 @@ ret val = terminator $ Do $ Ret (Just val) []
 -- Compilation
 -------------------------------------------------------------------------------
 
+strToShort :: String -> BS.ShortByteString
+strToShort str = BS.toShort $ B.Char8.pack str
+
 moduleTitle :: BS.ShortByteString
 moduleTitle = "module"
 
@@ -290,17 +293,17 @@ codegen mod (TA.PDefs defs) = withContext $ \context ->
 
 codegenDef :: TA.DefT -> LLVM ()
 codegenDef (TA.DFun t (Id id) arg stms) = do
-    define (typeMap t) (BS.toShort $ B.Char8.pack id) args bls
+    define (typeMap t) (strToShort id) args bls
     where
-        args = map (\(ADecl typ (Id ide)) -> (typeMap typ, Name $ BS.toShort $ B.Char8.pack ide)) arg
+        args = map (\(ADecl typ (Id ide)) -> (typeMap typ, Name $ strToShort ide)) arg
         bls = createBlocks $ execCodegen $ do
             entry <- addBlock entryBlockName
             setBlock entry
             addTable
             forM arg $ \(ADecl typ2 (Id id2)) -> do
                 var <- alloca $ typeMap typ2
-                store var $ local (typeMap typ2) (Name $ BS.toShort $ B.Char8.pack id2)
-                assign (BS.toShort $ B.Char8.pack id2) var
+                store var $ local (typeMap typ2) (Name $ strToShort id2)
+                assign (strToShort id2) var
             mapM codegenStm stms
             retVal <- alloca $ typeMap t -- These two lines are nonsense and just here, since every block needs a terminator. Else llvm throws an error.
             ret retVal
@@ -324,28 +327,20 @@ codegenStm (TA.SIfElse exp stm1 stm2) = do return ()
 
 codegenExp :: TA.ExpT -> Codegen Operand
 codegenExp (TA.ETrue, typ) = do
-    var <- alloca $ typeMap typ
-    store var $ cons $ C.Int { C.integerBits = 1
-                             , C.integerValue = 1 
-                             }
-    return var
+    return $ cons $ C.Int { C.integerBits = 1
+                          , C.integerValue = 1 
+                          }
 codegenExp (TA.EFalse, typ) = do
-    var <- alloca $ typeMap typ
-    store var $ cons $ C.Int { C.integerBits = 1
-                             , C.integerValue = 0 
-                             }
-    return var
+    return $ cons $ C.Int { C.integerBits = 1
+                          , C.integerValue = 0 
+                          }
 codegenExp ((TA.EInt int), typ) = do
-    var <- alloca $ typeMap typ
-    store var $ cons $ C.Int { C.integerBits = 32
-                             , C.integerValue = int 
-                             }
-    return var
+    return $ cons $ C.Int { C.integerBits = 32
+                          , C.integerValue = int 
+                          }
 codegenExp ((TA.EDouble double), typ) = do
-    var <- alloca $ typeMap typ
-    store var $ cons $ C.Float { C.floatValue = (F.Double double) }
-    return var
-codegenExp ((TA.EId id), typ) = do return $ local VoidType (Name "not implemented")
+    return $ cons $ C.Float { C.floatValue = (F.Double double) }
+codegenExp ((TA.EId (Id id)), typ) = getvar $ strToShort id
 codegenExp ((TA.EApp id exps), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.EProj exp id), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.EPIncr exp), typ) = do return $ local VoidType (Name "not implemented")
