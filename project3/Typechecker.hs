@@ -65,7 +65,7 @@ checkDefs :: Env -> [Def] -> [TA.DefT] -> Err (Env, [TA.DefT])
 checkDefs env [] deft = Ok (env, deft)
 checkDefs env (def:xs) defts = do
     (env2, deft) <- checkDef env def
-    checkDefs env2 xs $ [deft] ++ defts
+    checkDefs env2 xs $ defts ++ [deft]
 
 checkDef :: Env -> Def -> Err (Env, TA.DefT)
 checkDef env (DFun t id args stms) = do
@@ -99,7 +99,7 @@ checkStms :: Env -> [Stm] -> [TA.StmT] -> Err (Env, [TA.StmT])
 checkStms env [] stmst = Ok $ (deleteBlock env, stmst)
 checkStms env (stm:xs) stmst = do
     (env2, stmt) <- checkStm env stm 
-    checkStms env2 xs $ [stmt] ++ stmst
+    checkStms env2 xs $ stmst ++ [stmt]
 
 checkStm :: Env -> Stm -> Err (Env, TA.StmT)
 checkStm env (SExp exp) = do
@@ -156,7 +156,7 @@ checkIdins :: Env -> Type -> [IdIn] -> [TA.IdInT] -> Err (Env, [TA.IdInT])
 checkIdins env _ [] idinst        = Ok (env, idinst)
 checkIdins env t (idin:xs) idinst = do
     (env2, idint) <- checkIdin env t idin
-    checkIdins env2 t xs $ [idint] ++ idinst
+    checkIdins env2 t xs $ idinst ++ [idint]
 
 checkIdin :: Env -> Type -> IdIn -> Err (Env, TA.IdInT)
 checkIdin env t (IdNoInit id) = do
@@ -173,7 +173,7 @@ checkExps :: Env -> [Exp]-> [Type] -> [TA.ExpT] -> Err [TA.ExpT]
 checkExps env [] [] expst = Ok expst
 checkExps env (exp:xs) (t:ys) expst = do
     (typ1, expt) <- checkExp env exp t
-    checkExps env xs ys $ [expt] ++ expst
+    checkExps env xs ys $  expst ++ [expt]
 
 checkExp :: Env -> Exp -> Type -> Err (Type, TA.ExpT)
 checkExp env exp t = do

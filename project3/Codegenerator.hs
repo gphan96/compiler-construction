@@ -28,6 +28,8 @@ import LLVM.Context
 import LLVM.AST
 import LLVM.AST.Global
 import qualified LLVM.AST as AST
+import qualified LLVM.AST.Constant as C
+import qualified LLVM.AST.Float as F
 import qualified LLVM.AST.CallingConvention as CC
 
 
@@ -129,7 +131,7 @@ emptyBlock :: Int -> BlockState
 emptyBlock i = BlockState i [] Nothing
 
 emptyCodegen :: CodegenState
-emptyCodegen = CodegenState (Name entryBlockName) Map.empty [[]] 1 0 Map.empty
+emptyCodegen = CodegenState (Name entryBlockName) Map.empty [] 1 0 Map.empty
 
 execCodegen :: Codegen a -> CodegenState
 execCodegen m = execState (runCodegen m) emptyCodegen
@@ -223,6 +225,16 @@ getvarTable var (syms:xs) = case lookup var syms of
     Just x  -> return x
     Nothing -> getvarTable var xs
 
+addTable :: Codegen ()
+addTable = do
+    tables <- gets symtab
+    modify $ \s -> s { symtab = [[]] ++ tables }
+
+deleteTable :: Codegen ()
+deleteTable = do
+    tables <- gets symtab
+    modify $ \s -> s { symtab = tail tables }
+
 -------------------------------------------------------------------------------
 -- Type Mapping
 -------------------------------------------------------------------------------
@@ -239,7 +251,10 @@ typeMap (TypeId id) = StructureType { isPacked = False, elementTypes = [] }
 -------------------------------------------------------------------------------
 
 local :: AST.Type -> Name -> Operand
-local name typ = LocalReference name typ
+local typ name = LocalReference typ name
+
+cons :: C.Constant -> Operand
+cons = ConstantOperand
 
 call :: Operand -> [Operand] -> AST.Type -> Codegen Operand
 call fn args t = instr (Call Nothing CC.C [] (Right fn) (map (\x -> (x, [])) args) [] []) t
@@ -281,51 +296,76 @@ codegenDef (TA.DFun t (Id id) arg stms) = do
         bls = createBlocks $ execCodegen $ do
             entry <- addBlock entryBlockName
             setBlock entry
+            addTable
             forM arg $ \(ADecl typ2 (Id id2)) -> do
                 var <- alloca $ typeMap typ2
                 store var $ local (typeMap typ2) (Name $ BS.toShort $ B.Char8.pack id2)
                 assign (BS.toShort $ B.Char8.pack id2) var
+            mapM codegenStm stms
             retVal <- alloca $ typeMap t -- These two lines are nonsense and just here, since every block needs a terminator. Else llvm throws an error.
             ret retVal
 codegenDef (TA.DStruct id fields) = do return ()
         
-codegenStm :: TA.StmT -> LLVM ()
-codegenStm (TA.SExp exp) = do return ()
+codegenStm :: TA.StmT -> Codegen ()
+codegenStm (TA.SExp exp) = do
+    codegenExp exp
+    return ()
 codegenStm (TA.SDecls t idins) = do return ()
 codegenStm (TA.SReturn exp) = do return ()
 codegenStm TA.SReturnV = do return ()
 codegenStm (TA.SWhile exp stm) = do return ()
 codegenStm (TA.SDoWhile stm exp) = do return ()
 codegenStm (TA.SFor exp1 exp2 exp3 stm) = do return ()
-codegenStm (TA.SBlock stms) = do return ()
+codegenStm (TA.SBlock stms) = do
+    addTable
+    mapM codegenStm stms
+    deleteTable
 codegenStm (TA.SIfElse exp stm1 stm2) = do return ()
 
-codegenExp :: TA.ExpT -> LLVM ()
-codegenExp (TA.ETrue, typ) = do return ()
-codegenExp (TA.EFalse, typ)= do return ()
-codegenExp ((TA.EInt int), typ) = do return ()
-codegenExp ((TA.EDouble double), typ) = do return ()
-codegenExp ((TA.EId id), typ) = do return ()
-codegenExp ((TA.EApp id exps), typ) = do return ()
-codegenExp ((TA.EProj exp id), typ) = do return ()
-codegenExp ((TA.EPIncr exp), typ) = do return ()
-codegenExp ((TA.EPDecr exp), typ) = do return ()
-codegenExp ((TA.EIncr exp), typ) = do return ()
-codegenExp ((TA.EDecr exp), typ) = do return ()
-codegenExp ((TA.EUPlus exp), typ) = do return ()
-codegenExp ((TA.EUMinus exp), typ) = do return ()
-codegenExp ((TA.ETimes exp1 exp2), typ) = do return ()
-codegenExp ((TA.EDiv exp1 exp2), typ) = do return ()
-codegenExp ((TA.EPlus exp1 exp2), typ) = do return ()
-codegenExp ((TA.EMinus exp1 exp2), typ) = do return ()
-codegenExp ((TA.ETwc exp1 exp2), typ) = do return ()
-codegenExp ((TA.ELt exp1 exp2), typ) = do return ()
-codegenExp ((TA.EGt exp1 exp2), typ) = do return ()
-codegenExp ((TA.ELtEq exp1 exp2), typ) = do return ()
-codegenExp ((TA.EGtEq exp1 exp2), typ) = do return ()
-codegenExp ((TA.EEq exp1 exp2), typ) = do return ()
-codegenExp ((TA.ENEq exp1 exp2), typ) = do return ()
-codegenExp ((TA.EAnd exp1 exp2), typ) = do return ()
-codegenExp ((TA.EOr exp1 exp2), typ) = do return ()
-codegenExp ((TA.EAss exp1 exp2), typ) = do return ()
-codegenExp ((TA.ECond exp1 exp2 exp3), typ) = do return ()
+codegenExp :: TA.ExpT -> Codegen Operand
+codegenExp (TA.ETrue, typ) = do
+    var <- alloca $ typeMap typ
+    store var $ cons $ C.Int { C.integerBits = 1
+                             , C.integerValue = 1 
+                             }
+    return var
+codegenExp (TA.EFalse, typ) = do
+    var <- alloca $ typeMap typ
+    store var $ cons $ C.Int { C.integerBits = 1
+                             , C.integerValue = 0 
+                             }
+    return var
+codegenExp ((TA.EInt int), typ) = do
+    var <- alloca $ typeMap typ
+    store var $ cons $ C.Int { C.integerBits = 32
+                             , C.integerValue = int 
+                             }
+    return var
+codegenExp ((TA.EDouble double), typ) = do
+    var <- alloca $ typeMap typ
+    store var $ cons $ C.Float { C.floatValue = (F.Double double) }
+    return var
+codegenExp ((TA.EId id), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EApp id exps), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EProj exp id), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EPIncr exp), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EPDecr exp), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EIncr exp), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EDecr exp), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EUPlus exp), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EUMinus exp), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.ETimes exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EDiv exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EPlus exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EMinus exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.ETwc exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.ELt exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EGt exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.ELtEq exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EGtEq exp1 exp2), typ) = do return  $ local VoidType (Name "not implemented")
+codegenExp ((TA.EEq exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.ENEq exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EAnd exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EOr exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EAss exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.ECond exp1 exp2 exp3), typ) = do return $ local VoidType (Name "not implemented")
