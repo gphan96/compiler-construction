@@ -62,6 +62,13 @@ define retty label argtys body = addDefn $
     , basicBlocks = body
     }
 
+struct :: BS.ShortByteString -> [AST.Type] -> LLVM ()
+struct label fields = addDefn $
+    TypeDefinition (Name label) (Just StructureType {
+      isPacked     = False
+    , elementTypes = fields
+    })
+
 {--external ::  Type -> String -> [(Type, Name)] -> LLVM ()
 external retty label argtys = addDefn $
     GlobalDefinition $ functionDefaults {
@@ -246,7 +253,7 @@ typeMap Type_bool = T.i1
 typeMap Type_int = T.i32
 typeMap Type_double = T.double
 typeMap Type_void = T.void
-typeMap (TypeId id) = StructureType { isPacked = False, elementTypes = [] }
+typeMap (TypeId (Id id)) = NamedTypeReference $ Name $ strToShort id
 
 -------------------------------------------------------------------------------
 -- Operators
@@ -325,7 +332,10 @@ codegenDef (TA.DFun t (Id id) arg stms) = do
                 _ -> do
                     retVoid
                     return ()
-codegenDef (TA.DStruct id fields) = do return ()
+codegenDef (TA.DStruct (Id id) fields) = do
+    struct (strToShort id) fs
+    where
+        fs = map (\(FDecl t _) -> typeMap t) fields
         
 codegenStm :: TA.StmT -> Codegen ()
 codegenStm (TA.SExp exp) = do
