@@ -531,12 +531,24 @@ codegenExp ((TA.EOr exp1 exp2), typ) = do
     var2 <- codegenExp exp2
     res <- Codegenerator.or var1 var2
     return res
-codegenExp ((TA.EAss exp1 exp2), typ) = case exp1 of
-    (TA.EId (Id id), t) -> do
-        res <- codegenExp exp2
-        var <- alloca $ typeMap t
-        store var res
-        assign (strToShort id) var
-        return res
-    _ -> do return $ local VoidType (Name "not implemented") 
-codegenExp ((TA.ECond exp1 exp2 exp3), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EAss exp1 exp2), typ) = do
+    res <- codegenExp exp2
+    ptr <- getProjPointer exp1
+    store ptr res
+    return res
+
+getProjPointer :: TA.ExpT -> Codegen Operand
+getProjPointer (TA.EId (Id id), t) = do
+    ptr <- getvar (strToShort id)
+    return ptr
+getProjPointer ((TA.EProj (exp, (TypeId tid)) id), typ) = do
+    strs <- gets structs
+    case lookup tid strs of
+        Nothing -> do return $ local VoidType (Name "IMPOSSIBLE")
+        Just str -> case findIndex (\(tid2, typ2) -> tid2 == id) str of
+            Nothing -> do return $ local VoidType (Name "IMPOSSIBLE")
+            Just index -> do
+                ptr <- getProjPointer (exp, (TypeId tid))
+                elemPtr <- getelemptr ptr [cons $ C.Int 32 0, cons $ C.Int 32 $ toInteger index] $ typeMap typ
+                return elemPtr
+getProjPointer _ = do return $ local VoidType (Name "IMPOSSIBLE")

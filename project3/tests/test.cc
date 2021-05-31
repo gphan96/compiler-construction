@@ -10,5 +10,11 @@ struct next {
 int main() {
 	next n;
 
-	return n.s.a;
+	n.s.a = 10;
+
+	int i;
+
+	i = 20;
+
+	return i;
 }
