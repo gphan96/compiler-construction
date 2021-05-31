@@ -778,7 +778,7 @@ codegenExp ((TA.EAss (exp1, t1) (exp2, t2)), typ) = do
     else do
         store ptr res
         return res
-codegenExp ((TA.ECond exp1 exp2 exp3), typ) = do
+codegenExp ((TA.ECond exp1 (exp2, t2) (exp3, t3)), typ) = do
     left <- addBlock $ strToShort "ternOpLeft"
     right <- addBlock $ strToShort "ternOpRight"
     continue <- addBlock $ strToShort "continue"
@@ -786,12 +786,20 @@ codegenExp ((TA.ECond exp1 exp2 exp3), typ) = do
     cond <- codegenExp exp1
     cbr cond left right
     setBlock left
-    resL <- codegenExp exp2
-    store ptr resL
+    resL <- codegenExp (exp2, t2)
+    if typ == Type_double && t2 == Type_int then do
+        convL <- sitofp resL $ typeMap typ
+        store ptr convL
+    else do 
+        store ptr resL
     br continue
     setBlock right
-    resR <- codegenExp exp3
-    store ptr resR
+    resR <- codegenExp (exp3, t3)
+    if typ == Type_double && t3 == Type_int then do
+        convR <- sitofp resR $ typeMap typ
+        store ptr convR
+    else do
+        store ptr resR
     br continue
     setBlock continue
     res <- load ptr $ typeMap typ
