@@ -498,11 +498,16 @@ codegenIdin :: AbsCPP.Type -> TA.IdInT -> Codegen ()
 codegenIdin t (TA.IdNoInit (Id id)) = do
     var <- alloca $ typeMap t
     declare (strToShort id) var
-codegenIdin t (TA.IdInit (Id id) exp) = do
-    res <- codegenExp exp
+codegenIdin t (TA.IdInit (Id id) (exp, expType)) = do
+    res <- codegenExp (exp, expType)
     var <- alloca $ typeMap t
-    store var res
-    declare (strToShort id) var
+    if t == Type_double && expType == Type_int then do
+        conv <- sitofp res $ typeMap t
+        store var conv
+        declare (strToShort id) var
+    else do
+        store var res
+        declare (strToShort id) var
 
 codegenExp :: TA.ExpT -> Codegen Operand
 codegenExp (TA.ETrue, typ) = do
