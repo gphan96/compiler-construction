@@ -412,8 +412,11 @@ codegenDef structs (TA.DFun t (Id id) arg stms) = do
                 (TA.SReturnV) -> return ()
                 (TA.SReturn _) -> return ()
                 _ -> do
-                    retVoid
-                    return ()
+                    case t of
+                        Type_void -> do
+                            retVoid
+                            return ()
+                        _ -> do return ()
 codegenDef _ (TA.DStruct (Id id) fields) = do
     struct (strToShort id) fs
     where
