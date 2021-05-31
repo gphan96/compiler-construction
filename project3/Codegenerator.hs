@@ -306,6 +306,12 @@ icmp cond a b = instr (ICmp cond a b []) T.i1
 fcmp :: FP.FloatingPointPredicate -> Operand -> Operand -> Codegen Operand
 fcmp cond a b = instr (FCmp cond a b []) T.i1
 
+and :: Operand -> Operand -> Codegen Operand
+and a b = instr (And a b []) T.i1
+
+or :: Operand -> Operand -> Codegen Operand
+or a b = instr (Or a b []) T.i1
+
 call :: Operand -> [Operand] -> AST.Type -> Codegen Operand
 call fn args t = instr (Call Nothing CC.C [] (Right fn) (map (\x -> (x, [])) args) [] []) t
 
@@ -500,8 +506,16 @@ codegenExp ((TA.ELtEq (e1, t1) (e2, t2)), typ) = case typeConv t1 t2 of
 codegenExp ((TA.EGtEq exp1 exp2), typ) = do return  $ local VoidType (Name "not implemented") -- Task 4
 codegenExp ((TA.EEq exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.ENEq exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
-codegenExp ((TA.EAnd exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
-codegenExp ((TA.EOr exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EAnd exp1 exp2), typ) = do
+    var1 <- codegenExp exp1
+    var2 <- codegenExp exp2
+    res <- Codegenerator.and var1 var2
+    return res
+codegenExp ((TA.EOr exp1 exp2), typ) = do
+    var1 <- codegenExp exp1
+    var2 <- codegenExp exp2
+    res <- Codegenerator.or var1 var2
+    return res
 codegenExp ((TA.EAss exp1 exp2), typ) = case exp1 of
     (TA.EId (Id id), t) -> do
         res <- codegenExp exp2
