@@ -274,15 +274,20 @@ false = cons $ C.Int { C.integerBits = 1
 -- Type Conversion
 -------------------------------------------------------------------------------
 
-intToDouble :: Operand -> Operand
-intToDouble (ConstantOperand (C.Int bits int)) = ConstantOperand $ C.Float $ F.Double $ fromIntegral int
-intToDouble any = any
+intToDouble :: Operand -> AbsCPP.Type -> Codegen Operand
+intToDouble a t = do
+    case t of
+        Type_int -> do
+            res <- sitofp a T.double
+            return res
+        _ -> do
+            return a
 
 typeConv :: AbsCPP.Type -> AbsCPP.Type -> AbsCPP.Type
 typeConv t1 t2 = 
     if t1 == t2 then t1
     else if t1 == Type_double && t2 == Type_int || t2 == Type_double && t1 == Type_int then Type_double
-    else t1 
+    else t1 -- Shouldn't happen, if function called in the right way. 
 
 -------------------------------------------------------------------------------
 -- Operators
@@ -315,18 +320,20 @@ mul a b = instr (Mul False False a b []) T.i32
 fmul :: Operand -> Operand -> Codegen Operand
 fmul a b = instr (FMul noFastMathFlags a b []) T.double
 
-div :: Operand -> Operand -> Codegen Operand
-div a b = instr (Div False False a b []) T.i32
+--div :: Operand -> Operand -> Codegen Operand
+--div a b = instr (SDiv False a b []) T.i32
 
 fdiv :: Operand -> Operand -> Codegen Operand
 fdiv a b = instr (FDiv noFastMathFlags a b []) T.double
-
 
 icmp :: IP.IntegerPredicate -> Operand -> Operand -> Codegen Operand
 icmp cond a b = instr (ICmp cond a b []) T.i1
 
 fcmp :: FP.FloatingPointPredicate -> Operand -> Operand -> Codegen Operand
 fcmp cond a b = instr (FCmp cond a b []) T.i1
+
+sitofp :: Operand -> AST.Type -> Codegen Operand
+sitofp a typ = instr (SIToFP a typ []) typ
 
 and :: Operand -> Operand -> Codegen Operand
 and a b = instr (And a b []) T.i1
@@ -660,30 +667,34 @@ codegenExp ((TA.EUMinus exp), typ) = do
         Type_double -> do
             res <- fmul var $ cons $ C.Float $ F.Double (-1.0)
             return res
-codegenExp ((TA.ETimes exp1 exp2), typ) = case typ of
+codegenExp ((TA.ETimes (exp1, t1) (exp2, t2)), typ) = case typ of
     Type_int -> do
-        var1 <- codegenExp exp1
-        var2 <- codegenExp exp2
+        var1 <- codegenExp (exp1, t1)
+        var2 <- codegenExp (exp2, t2)
         res <- mul var1 var2
         return res
     Type_double -> do
-        var1 <- codegenExp exp1
-        var2 <- codegenExp exp2
-        res <- fmul (intToDouble var1) (intToDouble var2)
+        var1 <- codegenExp (exp1, t1)
+        var2 <- codegenExp (exp2, t2)
+        var3 <- intToDouble var1 t1
+        var4 <- intToDouble var2 t2
+        res <- fmul var3 var4
         return res
     _ -> do return $ local VoidType (Name "IMPOSSIBLE")
-codegenExp ((TA.EDiv exp1 exp2), typ) = case typ of
+{--codegenExp ((TA.EDiv (exp1, t1) (exp2, t2)), typ) = case typ of
     Type_int -> do
-        var1 <- codegenExp exp1
-        var2 <- codegenExp exp2
-        res <- div var1 var2
+        var1 <- codegenExp (exp1, t1)
+        var2 <- codegenExp (exp2, t2)
+        res <- Codegenerator.div var1 var2
         return res
     Type_double -> do
-        var1 <- codegenExp exp1
-        var2 <- codegenExp exp2
-        res <- fdiv (intToDouble var1) (intToDouble var2)
+        var1 <- codegenExp (exp1, t1)
+        var2 <- codegenExp (exp2, t2)
+        var3 <- intToDouble var1 t1
+        var4 <- intToDouble var2 t2
+        res <- fcmp FP.OLE var3 var4
         return res
-    _ -> do return $ local VoidType (Name "IMPOSSIBLE")
+    _ -> do return $ local VoidType (Name "IMPOSSIBLE")--}
 codegenExp ((TA.EPlus exp1 exp2), typ) = do return $ local VoidType (Name "not implemented") -- Task 1
 codegenExp ((TA.EMinus exp1 exp2), typ) = do return $ local VoidType (Name "not implemented") -- Task 2
 codegenExp ((TA.ETwc exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
@@ -698,18 +709,20 @@ codegenExp ((TA.ELtEq (e1, t1) (e2, t2)), typ) = case typeConv t1 t2 of
     Type_double -> do
         var1 <- codegenExp (e1, t1)
         var2 <- codegenExp (e2, t2)
-        res <- fcmp FP.OLE (intToDouble var1) (intToDouble var2)
+        var3 <- intToDouble var1 t1
+        var4 <- intToDouble var2 t2
+        res <- fcmp FP.OLE var3 var4
         return res
     _ -> do return $ local VoidType (Name "IMPOSSIBLE")
 codegenExp ((TA.EGtEq exp1 exp2), typ) = do return  $ local VoidType (Name "not implemented") -- Task 4
 codegenExp ((TA.EEq (exp1, t1) (exp2, t2)), typ) = do
     val1 <- codegenExp (exp1, t1)
     val2 <- codegenExp (exp2, t2)
-    equal (val1, t1) (val2, t2)
+    equal (val1, (exp1, t1), t1) (val2, (exp2, t2), t2)
 codegenExp ((TA.ENEq (exp1, t1) (exp2, t2)), typ) = do
     val1 <- codegenExp (exp1, t1)
     val2 <- codegenExp (exp2, t2)
-    notEqual (val1, t1) (val2, t2)
+    notEqual (val1, (exp1, t1), t1) (val2, (exp2, t2), t2)
 codegenExp ((TA.EAnd exp1 exp2), typ) = do
     var1 <- codegenExp exp1
     var2 <- codegenExp exp2
@@ -744,9 +757,14 @@ codegenExp ((TA.ECond exp1 exp2 exp3), typ) = do
     res <- load ptr $ typeMap typ
     return res
 
-equal :: (Operand, AbsCPP.Type) -> (Operand, AbsCPP.Type) -> Codegen Operand
-equal (a, t1) (b, t2) = do
-    if t1 == t2 then do
+equal :: (Operand, TA.ExpT, AbsCPP.Type) -> (Operand, TA.ExpT, AbsCPP.Type) -> Codegen Operand
+equal (a, e1, t1) (b, e2, t2) = do
+    if t1 == Type_double && t2 == Type_int || t2 == Type_double && t1 == Type_int then do
+        var1 <- intToDouble a t1
+        var2 <- intToDouble b t2
+        res <- fcmp FP.OEQ var1 var2
+        return res
+    else if t1 == t2 then do
         case t1 of
             Type_int -> do
                 res <- icmp IP.EQ a b
@@ -757,13 +775,36 @@ equal (a, t1) (b, t2) = do
             Type_bool -> do
                 res <- icmp IP.EQ a b
                 return res
-            (TypeId id) -> do return true 
+            Type_void -> do
+                return true
+            (TypeId id) -> do
+                ptr <- alloca T.i1
+                store ptr true
+                strs <- gets structs
+                case lookup id strs of
+                    Nothing -> do return $ local VoidType (Name "IMPOSSIBLE")
+                    Just fields -> do
+                        mapM (\(idf, typ) -> do
+                            c1 <- codegenExp ((TA.EProj e1 idf), typ)
+                            c2 <- codegenExp ((TA.EProj e2 idf), typ)
+                            comp <- equal (c1, ((TA.EProj e1 idf), typ), typ) (c2, ((TA.EProj e2 idf), typ), typ)
+                            old <- load ptr T.i1
+                            new <- Codegenerator.and old comp
+                            store ptr new
+                            ) fields
+                        result <- load ptr T.i1
+                        return result
     else do
         return false
 
-notEqual :: (Operand, AbsCPP.Type) -> (Operand, AbsCPP.Type) -> Codegen Operand
-notEqual (a, t1) (b, t2) = do
-    if t1 == t2 then do
+notEqual :: (Operand, TA.ExpT, AbsCPP.Type) -> (Operand, TA.ExpT, AbsCPP.Type) -> Codegen Operand
+notEqual (a, e1, t1) (b, e2, t2) = do
+    if t1 == Type_double && t2 == Type_int || t2 == Type_double && t1 == Type_int then do
+        var1 <- intToDouble a t1
+        var2 <- intToDouble b t2
+        res <- fcmp FP.ONE var1 var2
+        return res
+    else if t1 == t2 then do
         case t1 of
             Type_int -> do
                 res <- icmp IP.NE a b
@@ -774,9 +815,27 @@ notEqual (a, t1) (b, t2) = do
             Type_bool -> do
                 res <- icmp IP.NE a b
                 return res
-            (TypeId id) -> do return false 
+            Type_void -> do
+                return true
+            (TypeId id) -> do
+                ptr <- alloca T.i1
+                store ptr false
+                strs <- gets structs
+                case lookup id strs of
+                    Nothing -> do return $ local VoidType (Name "IMPOSSIBLE")
+                    Just fields -> do
+                        mapM (\(idf, typ) -> do
+                            c1 <- codegenExp ((TA.EProj e1 idf), typ)
+                            c2 <- codegenExp ((TA.EProj e2 idf), typ)
+                            comp <- equal (c1, ((TA.EProj e1 idf), typ), typ) (c2, ((TA.EProj e2 idf), typ), typ)
+                            old <- load ptr T.i1
+                            new <- Codegenerator.or old comp
+                            store ptr new
+                            ) fields
+                        result <- load ptr T.i1
+                        return result
     else do
-        return true 
+        return true
 
 getProjPointer :: TA.ExpT -> Codegen Operand
 getProjPointer (TA.EId (Id id), t) = do
