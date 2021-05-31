@@ -1,9 +1,14 @@
 
-bool main() {
-	bool b = true;
-	b = 3 <= 5;
+struct str {
+	int a;
+};
 
-	b = b && b;
+struct next {
+	str s;
+};
 
-	return b;
+int main() {
+	next n;
+
+	return n.s.a;
 }

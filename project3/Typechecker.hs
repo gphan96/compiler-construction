@@ -29,11 +29,11 @@ currFuncIdent = Id "__currFunc"
 
 ------------- Main functions ---------------
 
-typecheck :: Program -> Err TA.ProgramT
+typecheck :: Program -> Err (TA.ProgramT, [(Id, [(Id, Type)])])
 typecheck (PDefs defs) = do
     env2 <- addDefs emptyEnv defs
-    (env3, defts) <- checkDefs env2 defs []
-    return $ TA.PDefs defts
+    ((env3, structs), defts) <- checkDefs env2 defs []
+    return $ (TA.PDefs defts, Map.assocs structs)
 
 -- First traversal of abstract syntax tree:
 -- Add all structs and functions to the environment, only check for duplicate definitions and duplicate fields in struct

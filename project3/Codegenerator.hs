@@ -37,6 +37,8 @@ import qualified LLVM.AST.IntegerPredicate as IP
 import qualified LLVM.AST.FloatingPointPredicate as FP
 
 
+type Structs = [(Id, [(Id, AbsCPP.Type)])]
+
 -------------------------------------------------------------------------------
 -- Module Level
 -------------------------------------------------------------------------------
@@ -107,6 +109,7 @@ data CodegenState
     , blockCount   :: Int                      -- Count of basic blocks
     , count        :: Word                     -- Count of unnamed instructions
     , names        :: Names                    -- Name Supply
+    , structs      :: Structs                  -- Structs
     } deriving Show
 
 data BlockState
@@ -141,11 +144,11 @@ entryBlockName = "entry"
 emptyBlock :: Int -> BlockState
 emptyBlock i = BlockState i [] Nothing
 
-emptyCodegen :: CodegenState
-emptyCodegen = CodegenState (Name entryBlockName) Map.empty [] 1 0 Map.empty
+emptyCodegen :: Structs -> CodegenState
+emptyCodegen structs = CodegenState (Name entryBlockName) Map.empty [] 1 0 Map.empty structs
 
-execCodegen :: Codegen a -> CodegenState
-execCodegen m = execState (runCodegen m) emptyCodegen
+execCodegen :: Structs -> Codegen a -> CodegenState
+execCodegen s m = execState (runCodegen m) $ emptyCodegen s
 
 fresh :: Codegen Word
 fresh = do
@@ -352,22 +355,22 @@ strToShort str = BS.toShort $ B.Char8.pack str
 moduleTitle :: BS.ShortByteString
 moduleTitle = "module"
 
-codegen :: AST.Module -> TA.ProgramT -> IO AST.Module
-codegen mod (TA.PDefs defs) = withContext $ \context ->
+codegen :: AST.Module -> (TA.ProgramT, Structs) -> IO AST.Module
+codegen mod ((TA.PDefs defs), structs) = withContext $ \context ->
     withModuleFromAST context newast $ \m -> do
         llstr <- moduleLLVMAssembly m
         B.Char8.putStrLn llstr
         return newast
     where
-        modn    = mapM codegenDef defs
+        modn    = mapM (codegenDef structs) defs
         newast  = runLLVM mod modn
 
-codegenDef :: TA.DefT -> LLVM ()
-codegenDef (TA.DFun t (Id id) arg stms) = do
+codegenDef :: Structs -> TA.DefT -> LLVM ()
+codegenDef structs (TA.DFun t (Id id) arg stms) = do
     define (typeMap t) (strToShort id) args bls
     where
         args = map (\(ADecl typ (Id ide)) -> (typeMap typ, Name $ strToShort ide)) arg
-        bls = createBlocks $ execCodegen $ do
+        bls = createBlocks $ execCodegen structs $ do
             entry <- addBlock entryBlockName
             setBlock entry
             addTable
@@ -385,7 +388,7 @@ codegenDef (TA.DFun t (Id id) arg stms) = do
                 _ -> do
                     retVoid
                     return ()
-codegenDef (TA.DStruct (Id id) fields) = do
+codegenDef _ (TA.DStruct (Id id) fields) = do
     struct (strToShort id) fs
     where
         fs = map (\(FDecl t _) -> typeMap t) fields
@@ -466,7 +469,19 @@ codegenExp ((TA.EApp (Id id) exps), typ) = do
     call (externf (strToShort id) (typeMap typ) argtys) args $ typeMap typ
     where
         argtys = map (\(e, t) -> typeMap t) exps
-codegenExp ((TA.EProj exp id), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EProj (e, (TypeId tid)) id), typ) = do
+    strs <- gets structs
+    case lookup tid strs of
+        Nothing -> do return $ local VoidType (Name "IMPOSSIBLE")
+        Just str -> case findIndex (\(tid2, typ2) -> tid2 == id) str of
+            Nothing -> do return $ local VoidType (Name "IMPOSSIBLE")
+            Just index -> do
+                struct <- codegenExp (e, (TypeId tid))
+                ptr <- alloca $ typeMap (TypeId tid)
+                store ptr struct
+                elemPtr <- getelemptr ptr [cons $ C.Int 32 0, cons $ C.Int 32 $ toInteger index] $ typeMap typ
+                elem <- load elemPtr $ typeMap typ
+                return elem
 codegenExp ((TA.EPIncr exp), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.EPDecr exp), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.EIncr exp), typ) = do return $ local VoidType (Name "not implemented")
