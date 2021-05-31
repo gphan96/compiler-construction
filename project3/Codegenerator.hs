@@ -274,20 +274,15 @@ false = cons $ C.Int { C.integerBits = 1
 -- Type Conversion
 -------------------------------------------------------------------------------
 
-intToDouble :: Operand -> AbsCPP.Type -> Codegen Operand
-intToDouble a t = do
-    case t of
-        Type_int -> do
-            res <- sitofp a T.double
-            return res
-        _ -> do
-            return a
+intToDouble :: Operand -> Operand
+intToDouble (ConstantOperand (C.Int bits int)) = ConstantOperand $ C.Float $ F.Double $ fromIntegral int
+intToDouble any = any
 
 typeConv :: AbsCPP.Type -> AbsCPP.Type -> AbsCPP.Type
 typeConv t1 t2 = 
     if t1 == t2 then t1
     else if t1 == Type_double && t2 == Type_int || t2 == Type_double && t1 == Type_int then Type_double
-    else t1 -- Shouldn't happen, if function called in the right way.
+    else t1 
 
 -------------------------------------------------------------------------------
 -- Operators
@@ -331,9 +326,6 @@ and a b = instr (And a b []) T.i1
 
 or :: Operand -> Operand -> Codegen Operand
 or a b = instr (Or a b []) T.i1
-
-sitofp :: Operand -> AST.Type -> Codegen Operand
-sitofp a typ = instr (SIToFP a typ []) typ
 
 call :: Operand -> [Operand] -> AST.Type -> Codegen Operand
 call fn args t = instr (Call Nothing CC.C [] (Right fn) (map (\x -> (x, [])) args) [] []) t
@@ -447,7 +439,24 @@ codegenStm (TA.SBlock stms) = do
     mapM codegenStm stms
     deleteTable
 codegenStm (TA.SIfElse exp stm1 stm2) = do return () -- Task 4
-
+{-    ifThen <- addBlock $ strToShort "ifThen"
+    ifElse <- addBlock $ strToShort "ifElse"
+    continue <- addBlock $ strToShort "continue"
+--
+    con <- codegenExp exp
+    cbr con ifThen ifElse
+--
+    setBlock ifThen
+    codegenStm stm1
+    br continue
+--
+    setBlock ifElse
+    codegenStm stm2
+    br continue
+--
+    setBlock continue
+    return ()
+-}
 codegenIdins :: AbsCPP.Type -> [TA.IdInT] -> Codegen ()
 codegenIdins t idins = do
     forM idins $ \idin -> do
@@ -632,18 +641,16 @@ codegenExp ((TA.EUMinus exp), typ) = do
         Type_double -> do
             res <- fmul var $ cons $ C.Float $ F.Double (-1.0)
             return res
-codegenExp ((TA.ETimes (exp1, t1) (exp2, t2)), typ) = case typ of
+codegenExp ((TA.ETimes exp1 exp2), typ) = case typ of
     Type_int -> do
-        var1 <- codegenExp (exp1, t1)
-        var2 <- codegenExp (exp2, t2)
+        var1 <- codegenExp exp1
+        var2 <- codegenExp exp2
         res <- mul var1 var2
         return res
     Type_double -> do
-        var1 <- codegenExp (exp1, t1)
-        var2 <- codegenExp (exp2, t2)
-        var3 <- intToDouble var1 t1
-        var4 <- intToDouble var2 t2
-        res <- fmul var3 var4
+        var1 <- codegenExp exp1
+        var2 <- codegenExp exp2
+        res <- fmul (intToDouble var1) (intToDouble var2)
         return res
     _ -> do return $ local VoidType (Name "IMPOSSIBLE")
 codegenExp ((TA.EDiv exp1 exp2), typ) = do return $ local VoidType (Name "not implemented") -- Task 4
@@ -661,9 +668,7 @@ codegenExp ((TA.ELtEq (e1, t1) (e2, t2)), typ) = case typeConv t1 t2 of
     Type_double -> do
         var1 <- codegenExp (e1, t1)
         var2 <- codegenExp (e2, t2)
-        var3 <- intToDouble var1 t1
-        var4 <- intToDouble var2 t2
-        res <- fcmp FP.OLE var3 var4
+        res <- fcmp FP.OLE (intToDouble var1) (intToDouble var2)
         return res
     _ -> do return $ local VoidType (Name "IMPOSSIBLE")
 codegenExp ((TA.EGtEq exp1 exp2), typ) = do return  $ local VoidType (Name "not implemented") -- Task 4
