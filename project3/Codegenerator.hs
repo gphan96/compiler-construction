@@ -315,6 +315,13 @@ mul a b = instr (Mul False False a b []) T.i32
 fmul :: Operand -> Operand -> Codegen Operand
 fmul a b = instr (FMul noFastMathFlags a b []) T.double
 
+div :: Operand -> Operand -> Codegen Operand
+div a b = instr (Div False False a b []) T.i32
+
+fdiv :: Operand -> Operand -> Codegen Operand
+fdiv a b = instr (FDiv noFastMathFlags a b []) T.double
+
+
 icmp :: IP.IntegerPredicate -> Operand -> Operand -> Codegen Operand
 icmp cond a b = instr (ICmp cond a b []) T.i1
 
