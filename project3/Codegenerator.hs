@@ -698,7 +698,20 @@ codegenExp ((TA.ETimes (exp1, t1) (exp2, t2)), typ) = case typ of
 codegenExp ((TA.EPlus exp1 exp2), typ) = do return $ local VoidType (Name "not implemented") -- Task 1
 codegenExp ((TA.EMinus exp1 exp2), typ) = do return $ local VoidType (Name "not implemented") -- Task 2
 codegenExp ((TA.ETwc exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
-codegenExp ((TA.ELt exp1 exp2), typ) = do return $ local VoidType (Name "not implemented") -- Task 1
+codegenExp ((TA.ELt (e1, t1) (e2, t2)), typ) = case typeConv t1 t2 of
+    Type_int -> do
+        var1 <- codegenExp (e1, t1)
+        var2 <- codegenExp (e2, t2)
+        res <- icmp IP.SLT var1 var2
+        return res
+    Type_double -> do
+        var1 <- codegenExp (e1, t1)
+        var2 <- codegenExp (e2, t2)
+        var3 <- intToDouble var1 t1
+        var4 <- intToDouble var2 t2
+        res <- fcmp FP.OLT var3 var4
+        return res
+    _ -> do return $ local VoidType (Name "IMPOSSIBLE")
 codegenExp ((TA.EGt exp1 exp2), typ) = do return $ local VoidType (Name "not implemented") -- Task2
 codegenExp ((TA.ELtEq (e1, t1) (e2, t2)), typ) = case typeConv t1 t2 of
     Type_int -> do

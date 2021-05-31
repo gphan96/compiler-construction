@@ -14,7 +14,7 @@ int main() {
     int i;
     do {
         i = 0;
-    } while (true); // i < 5 fails due to: "EncodeException "reference to undefined local: Name \"not implemented\", 
+    } while (true);
 
 
     return 0; 
