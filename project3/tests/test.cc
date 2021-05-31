@@ -8,10 +8,9 @@ struct next {
 };
 
 int main() {
-	int i = 0, j;
-	double d = 0.0, f;
-	j = -i;
-	f = -d;
+	int i = true ? 0 : 1;
+
+
 
 	return i;
 }

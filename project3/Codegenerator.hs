@@ -672,6 +672,24 @@ codegenExp ((TA.EAss exp1 exp2), typ) = do
     ptr <- getProjPointer exp1
     store ptr res
     return res
+codegenExp ((TA.ECond exp1 exp2 exp3), typ) = do
+    left <- addBlock $ strToShort "ternOpLeft"
+    right <- addBlock $ strToShort "ternOpRight"
+    continue <- addBlock $ strToShort "continue"
+    ptr <- alloca $ typeMap typ
+    cond <- codegenExp exp1
+    cbr cond left right
+    setBlock left
+    resL <- codegenExp exp2
+    store ptr resL
+    br continue
+    setBlock right
+    resR <- codegenExp exp3
+    store ptr resR
+    br continue
+    setBlock continue
+    res <- load ptr $ typeMap typ
+    return res
 
 getProjPointer :: TA.ExpT -> Codegen Operand
 getProjPointer (TA.EId (Id id), t) = do
