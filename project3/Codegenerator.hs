@@ -722,7 +722,38 @@ codegenExp ((TA.EPlus (e1, t1) (e2, t2)), typ) = do
             return res
         _ -> do return $ local VoidType (Name "IMPOSSIBLE")
 codegenExp ((TA.EMinus exp1 exp2), typ) = do return $ local VoidType (Name "not implemented") -- Task 2
-codegenExp ((TA.ETwc exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.ETwc (e1, t1) (e2, t2)), typ) = do
+    lt <- addBlock $ strToShort "lt"
+    ge <- addBlock $ strToShort "ge"
+    gt <- addBlock $ strToShort "gt"
+    continue <- addBlock "continue"
+    var1 <- codegenExp (e1, t1)
+    var2 <- codegenExp (e2, t2)
+    ptr <- alloca T.i32
+    store ptr $ cons $ C.Int 32 0
+    if typeConv t1 t2 == Type_double then do
+        var3 <- intToDouble var1 t1
+        var4 <- intToDouble var2 t2
+        less <- fcmp FP.OLT var3 var4
+        cbr less lt ge
+        setBlock ge
+        greater <- fcmp FP.OGT var3 var4
+        cbr greater gt continue
+    else do
+        less <- icmp IP.SLT var1 var2
+        cbr less lt ge
+        setBlock ge
+        greater <- icmp IP.SGT var1 var2
+        cbr greater gt continue
+    setBlock lt
+    store ptr $ cons $ C.Int 32 (-1)
+    br continue
+    setBlock gt
+    store ptr $ cons $ C.Int 32 (1)
+    br continue
+    setBlock continue
+    res <- load ptr T.i32
+    return res
 codegenExp ((TA.ELt (e1, t1) (e2, t2)), typ) = case typeConv t1 t2 of
     Type_int -> do
         var1 <- codegenExp (e1, t1)
