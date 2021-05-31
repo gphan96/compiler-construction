@@ -223,8 +223,8 @@ current = do
 -- Symbol Table
 -------------------------------------------------------------------------------
 
-assign :: BS.ShortByteString -> Operand -> Codegen ()
-assign var x = do
+declare :: BS.ShortByteString -> Operand -> Codegen ()
+declare var x = do
     tables <- gets symtab
     modify $ \s -> s { symtab = [[(var, x)] ++ head tables] ++ tail tables }
 
@@ -296,6 +296,18 @@ externf name retty argtys = ConstantOperand $ C.GlobalReference (PointerType (Fu
 
 cons :: C.Constant -> Operand
 cons c = ConstantOperand c
+
+add :: Operand -> Operand -> Codegen Operand
+add a b = instr (Add False False a b []) T.i32
+
+fadd :: Operand -> Operand -> Codegen Operand
+fadd a b = instr (FAdd noFastMathFlags a b []) T.double
+
+sub :: Operand -> Operand -> Codegen Operand
+sub a b = instr (Sub False False a b []) T.i32
+
+fsub :: Operand -> Operand -> Codegen Operand
+fsub a b = instr (FSub noFastMathFlags a b []) T.double
 
 mul :: Operand -> Operand -> Codegen Operand
 mul a b = instr (Mul False False a b []) T.i32
@@ -377,7 +389,7 @@ codegenDef structs (TA.DFun t (Id id) arg stms) = do
             forM arg $ \(ADecl typ2 (Id id2)) -> do
                 var <- alloca $ typeMap typ2
                 store var $ local (typeMap typ2) (Name $ strToShort id2)
-                assign (strToShort id2) var
+                declare (strToShort id2) var
             mapM codegenStm stms
             if stms == [] then do
                 retVoid
@@ -437,12 +449,12 @@ codegenIdins t idins = do
 codegenIdin :: AbsCPP.Type -> TA.IdInT -> Codegen ()
 codegenIdin t (TA.IdNoInit (Id id)) = do
     var <- alloca $ typeMap t
-    assign (strToShort id) var
+    declare (strToShort id) var
 codegenIdin t (TA.IdInit (Id id) exp) = do
     res <- codegenExp exp
     var <- alloca $ typeMap t
     store var res
-    assign (strToShort id) var
+    declare (strToShort id) var
 
 codegenExp :: TA.ExpT -> Codegen Operand
 codegenExp (TA.ETrue, typ) = do
@@ -482,10 +494,126 @@ codegenExp ((TA.EProj (e, (TypeId tid)) id), typ) = do
                 elemPtr <- getelemptr ptr [cons $ C.Int 32 0, cons $ C.Int 32 $ toInteger index] $ typeMap typ
                 elem <- load elemPtr $ typeMap typ
                 return elem
-codegenExp ((TA.EPIncr exp), typ) = do return $ local VoidType (Name "not implemented")
-codegenExp ((TA.EPDecr exp), typ) = do return $ local VoidType (Name "not implemented")
-codegenExp ((TA.EIncr exp), typ) = do return $ local VoidType (Name "not implemented")
-codegenExp ((TA.EDecr exp), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EPIncr exp), typ) = case exp of
+    (TA.EId _, _) -> do
+        ptr <- getProjPointer exp
+        val <- load ptr $ typeMap typ
+        case typ of
+            Type_int -> do
+                res <- add val $ cons $ C.Int 32 1
+                store ptr res
+                return val
+            Type_double -> do
+                res <- fadd val $ cons $ C.Float $ F.Double 1.0
+                store ptr res
+                return val
+            _ -> do return $ local VoidType (Name "IMPOSSIBLE")
+    (TA.EProj _ _, _) -> do
+        ptr <- getProjPointer exp
+        val <- load ptr $ typeMap typ
+        case typ of
+            Type_int -> do
+                res <- add val $ cons $ C.Int 32 1
+                store ptr res
+                return val
+            Type_double -> do
+                res <- fadd val $ cons $ C.Float $ F.Double 1.0
+                store ptr res
+                return val
+            _ -> do return $ local VoidType (Name "IMPOSSIBLE")
+    exp2 -> do
+        res <- codegenExp exp
+        return res
+codegenExp ((TA.EPDecr exp), typ) = case exp of
+    (TA.EId _, _) -> do
+        ptr <- getProjPointer exp
+        val <- load ptr $ typeMap typ
+        case typ of
+            Type_int -> do
+                res <- sub val $ cons $ C.Int 32 1
+                store ptr res
+                return val
+            Type_double -> do
+                res <- fsub val $ cons $ C.Float $ F.Double 1.0
+                store ptr res
+                return val
+            _ -> do return $ local VoidType (Name "IMPOSSIBLE")
+    (TA.EProj _ _, _) -> do
+        ptr <- getProjPointer exp
+        val <- load ptr $ typeMap typ
+        case typ of
+            Type_int -> do
+                res <- sub val $ cons $ C.Int 32 1
+                store ptr res
+                return val
+            Type_double -> do
+                res <- fsub val $ cons $ C.Float $ F.Double 1.0
+                store ptr res
+                return val
+            _ -> do return $ local VoidType (Name "IMPOSSIBLE")
+    exp2 -> do
+        res <- codegenExp exp
+        return res
+codegenExp ((TA.EIncr exp), typ) = case exp of
+    (TA.EId _, _) -> do
+        ptr <- getProjPointer exp
+        val <- load ptr $ typeMap typ
+        case typ of
+            Type_int -> do
+                res <- add val $ cons $ C.Int 32 1
+                store ptr res
+                return res
+            Type_double -> do
+                res <- fadd val $ cons $ C.Float $ F.Double 1.0
+                store ptr res
+                return res
+            _ -> do return $ local VoidType (Name "IMPOSSIBLE")
+    (TA.EProj _ _, _) -> do
+        ptr <- getProjPointer exp
+        val <- load ptr $ typeMap typ
+        case typ of
+            Type_int -> do
+                res <- add val $ cons $ C.Int 32 1
+                store ptr res
+                return res
+            Type_double -> do
+                res <- fadd val $ cons $ C.Float $ F.Double 1.0
+                store ptr res
+                return res
+            _ -> do return $ local VoidType (Name "IMPOSSIBLE")
+    exp2 -> do
+        res <- codegenExp exp
+        return res
+codegenExp ((TA.EDecr exp), typ) = case exp of
+    (TA.EId _, _) -> do
+        ptr <- getProjPointer exp
+        val <- load ptr $ typeMap typ
+        case typ of
+            Type_int -> do
+                res <- sub val $ cons $ C.Int 32 1
+                store ptr res
+                return res
+            Type_double -> do
+                res <- fsub val $ cons $ C.Float $ F.Double 1.0
+                store ptr res
+                return res
+            _ -> do return $ local VoidType (Name "IMPOSSIBLE")
+    (TA.EProj _ _, _) -> do
+        ptr <- getProjPointer exp
+        val <- load ptr $ typeMap typ
+        case typ of
+            Type_int -> do
+                res <- sub val $ cons $ C.Int 32 1
+                store ptr res
+                return res
+            Type_double -> do
+                res <- fsub val $ cons $ C.Float $ F.Double 1.0
+                store ptr res
+                return res
+            _ -> do return $ local VoidType (Name "IMPOSSIBLE")
+    exp2 -> do
+        res <- codegenExp exp
+        return res
 codegenExp ((TA.EUPlus exp), typ) = codegenExp exp
 codegenExp ((TA.EUMinus exp), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.ETimes exp1 exp2), typ) = case typ of
