@@ -404,7 +404,7 @@ codegenDef structs (TA.DFun t (Id id) arg stms) = do
                 var <- alloca $ typeMap typ2
                 store var $ local (typeMap typ2) (Name $ strToShort id2)
                 declare (strToShort id2) var
-            mapM codegenStm stms
+            mapM (codegenStm t) stms
             if stms == [] then do
                 retVoid
                 return ()
@@ -419,20 +419,25 @@ codegenDef _ (TA.DStruct (Id id) fields) = do
     where
         fs = map (\(FDecl t _) -> typeMap t) fields
         
-codegenStm :: TA.StmT -> Codegen ()
-codegenStm (TA.SExp exp) = do
+codegenStm :: AbsCPP.Type -> TA.StmT -> Codegen ()
+codegenStm _ (TA.SExp exp) = do
     codegenExp exp
     return ()
-codegenStm (TA.SDecls t idins) = codegenIdins t idins
-codegenStm (TA.SReturn exp) = do
-    var <- codegenExp exp
-    ret var
-    return ()
-codegenStm TA.SReturnV = do
+codegenStm _ (TA.SDecls t idins) = codegenIdins t idins
+codegenStm retty (TA.SReturn (exp, t)) = do
+    var <- codegenExp (exp, t)
+    if retty == Type_double && t == Type_int then do
+        conv <- sitofp var $ typeMap retty
+        ret conv
+        return ()
+    else do
+        ret var
+        return ()
+codegenStm _ TA.SReturnV = do
     retVoid
     return ()
-codegenStm (TA.SWhile exp stm) = do return () -- Task 2
-codegenStm (TA.SDoWhile stm exp) = do
+codegenStm _ (TA.SWhile exp stm) = do return () -- Task 2
+codegenStm retty (TA.SDoWhile stm exp) = do
     whileCond <- addBlock $ strToShort "whileCond"
     whileBlock <- addBlock $ strToShort "whileBlock"
     continue  <- addBlock $ strToShort "continue"
@@ -441,11 +446,11 @@ codegenStm (TA.SDoWhile stm exp) = do
     cond <- codegenExp exp
     cbr cond whileBlock continue
     setBlock whileBlock
-    codegenStm stm
+    codegenStm retty stm
     br whileCond
     setBlock continue
     return ()
-codegenStm (TA.SFor exp1 exp2 exp3 stm) = do
+codegenStm retty (TA.SFor exp1 exp2 exp3 stm) = do
     forCond <- addBlock $ strToShort "forCond"
     forLoop <- addBlock $ strToShort "forLoop"
     continue <- addBlock $ strToShort "continue"
@@ -455,16 +460,16 @@ codegenStm (TA.SFor exp1 exp2 exp3 stm) = do
     con <- codegenExp exp2
     cbr con forLoop continue
     setBlock forLoop
-    codegenStm stm
+    codegenStm retty stm
     codegenExp exp3
     br forCond
     setBlock continue
     return ()
-codegenStm (TA.SBlock stms) = do
+codegenStm retty (TA.SBlock stms) = do
     addTable
-    mapM codegenStm stms
+    mapM (codegenStm retty) stms
     deleteTable
-codegenStm (TA.SIfElse exp stm1 stm2) = do return () -- Task 4
+codegenStm _ (TA.SIfElse exp stm1 stm2) = do return () -- Task 4
 {-    ifThen <- addBlock $ strToShort "ifThen"
     ifElse <- addBlock $ strToShort "ifElse"
     continue <- addBlock $ strToShort "continue"
