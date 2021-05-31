@@ -660,7 +660,18 @@ codegenExp ((TA.ETimes exp1 exp2), typ) = case typ of
         res <- fmul (intToDouble var1) (intToDouble var2)
         return res
     _ -> do return $ local VoidType (Name "IMPOSSIBLE")
-codegenExp ((TA.EDiv exp1 exp2), typ) = do return $ local VoidType (Name "not implemented") -- Task 4
+codegenExp ((TA.EDiv exp1 exp2), typ) = case typ of
+    Type_int -> do
+        var1 <- codegenExp exp1
+        var2 <- codegenExp exp2
+        res <- div var1 var2
+        return res
+    Type_double -> do
+        var1 <- codegenExp exp1
+        var2 <- codegenExp exp2
+        res <- fdiv (intToDouble var1) (intToDouble var2)
+        return res
+    _ -> do return $ local VoidType (Name "IMPOSSIBLE")
 codegenExp ((TA.EPlus exp1 exp2), typ) = do return $ local VoidType (Name "not implemented") -- Task 1
 codegenExp ((TA.EMinus exp1 exp2), typ) = do return $ local VoidType (Name "not implemented") -- Task 2
 codegenExp ((TA.ETwc exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
