@@ -758,11 +758,16 @@ codegenExp ((TA.EOr exp1 exp2), typ) = do
     var2 <- codegenExp exp2
     res <- Codegenerator.or var1 var2
     return res
-codegenExp ((TA.EAss exp1 exp2), typ) = do
-    res <- codegenExp exp2
-    ptr <- getProjPointer exp1
-    store ptr res
-    return res
+codegenExp ((TA.EAss (exp1, t1) (exp2, t2)), typ) = do
+    res <- codegenExp (exp2, t2)
+    ptr <- getProjPointer (exp1, t1)
+    if t2 == Type_int && t1 == Type_double then do
+        conv <- sitofp res $ typeMap t1
+        store ptr conv
+        return conv
+    else do
+        store ptr res
+        return res
 codegenExp ((TA.ECond exp1 exp2 exp3), typ) = do
     left <- addBlock $ strToShort "ternOpLeft"
     right <- addBlock $ strToShort "ternOpRight"

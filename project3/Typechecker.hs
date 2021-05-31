@@ -179,7 +179,7 @@ checkExp :: Env -> Exp -> Type -> Err (Type, TA.ExpT)
 checkExp env exp t = do
     (t2, (e, t3)) <- inferExp env exp
     if t == t2 || t == Type_double && t2 == Type_int
-        then Ok (t, (e, t))
+        then Ok (t, (e, t2))
     else Bad $ "Expected: " ++ (show t) ++ ", but received: " ++ (show t2)
 
 inferExp :: Env -> Exp -> Err (Type, TA.ExpT)
