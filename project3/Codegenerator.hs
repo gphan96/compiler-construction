@@ -655,8 +655,14 @@ codegenExp ((TA.ELtEq (e1, t1) (e2, t2)), typ) = case typeConv t1 t2 of
         return res
     _ -> do return $ local VoidType (Name "IMPOSSIBLE")
 codegenExp ((TA.EGtEq exp1 exp2), typ) = do return  $ local VoidType (Name "not implemented") -- Task 4
-codegenExp ((TA.EEq exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
-codegenExp ((TA.ENEq exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EEq (exp1, t1) (exp2, t2)), typ) = do
+    val1 <- codegenExp (exp1, t1)
+    val2 <- codegenExp (exp2, t2)
+    equal (val1, t1) (val2, t2)
+codegenExp ((TA.ENEq (exp1, t1) (exp2, t2)), typ) = do
+    val1 <- codegenExp (exp1, t1)
+    val2 <- codegenExp (exp2, t2)
+    notEqual (val1, t1) (val2, t2)
 codegenExp ((TA.EAnd exp1 exp2), typ) = do
     var1 <- codegenExp exp1
     var2 <- codegenExp exp2
@@ -690,6 +696,40 @@ codegenExp ((TA.ECond exp1 exp2 exp3), typ) = do
     setBlock continue
     res <- load ptr $ typeMap typ
     return res
+
+equal :: (Operand, AbsCPP.Type) -> (Operand, AbsCPP.Type) -> Codegen Operand
+equal (a, t1) (b, t2) = do
+    if t1 == t2 then do
+        case t1 of
+            Type_int -> do
+                res <- icmp IP.EQ a b
+                return res
+            Type_double -> do
+                res <- fcmp FP.OEQ a b
+                return res
+            Type_bool -> do
+                res <- icmp IP.EQ a b
+                return res
+            (TypeId id) -> do return true 
+    else do
+        return false
+
+notEqual :: (Operand, AbsCPP.Type) -> (Operand, AbsCPP.Type) -> Codegen Operand
+notEqual (a, t1) (b, t2) = do
+    if t1 == t2 then do
+        case t1 of
+            Type_int -> do
+                res <- icmp IP.NE a b
+                return res
+            Type_double -> do
+                res <- fcmp FP.ONE a b
+                return res
+            Type_bool -> do
+                res <- icmp IP.NE a b
+                return res
+            (TypeId id) -> do return false 
+    else do
+        return true 
 
 getProjPointer :: TA.ExpT -> Codegen Operand
 getProjPointer (TA.EId (Id id), t) = do

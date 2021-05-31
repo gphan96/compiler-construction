@@ -8,9 +8,7 @@ struct next {
 };
 
 int main() {
-	int i = true ? 0 : 1;
+	bool b = true == false;
 
-
-
-	return i;
+	return 0;
 }
