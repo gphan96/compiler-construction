@@ -695,7 +695,19 @@ codegenExp ((TA.ETimes (exp1, t1) (exp2, t2)), typ) = case typ of
         res <- fcmp FP.OLE var3 var4
         return res
     _ -> do return $ local VoidType (Name "IMPOSSIBLE")--}
-codegenExp ((TA.EPlus exp1 exp2), typ) = do return $ local VoidType (Name "not implemented") -- Task 1
+codegenExp ((TA.EPlus (e1, t1) (e2, t2)), typ) = do
+    var1 <- codegenExp (e1, t1)
+    var2 <- codegenExp (e2, t2)
+    case typ of
+        Type_int -> do
+            res <- add var1 var2
+            return res
+        Type_double -> do
+            var3 <- intToDouble var1 t1
+            var4 <- intToDouble var2 t2
+            res <- fadd var3 var4
+            return res
+        _ -> do return $ local VoidType (Name "IMPOSSIBLE")
 codegenExp ((TA.EMinus exp1 exp2), typ) = do return $ local VoidType (Name "not implemented") -- Task 2
 codegenExp ((TA.ETwc exp1 exp2), typ) = do return $ local VoidType (Name "not implemented")
 codegenExp ((TA.ELt (e1, t1) (e2, t2)), typ) = case typeConv t1 t2 of
