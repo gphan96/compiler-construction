@@ -615,7 +615,15 @@ codegenExp ((TA.EDecr exp), typ) = case exp of
         res <- codegenExp exp
         return res
 codegenExp ((TA.EUPlus exp), typ) = codegenExp exp
-codegenExp ((TA.EUMinus exp), typ) = do return $ local VoidType (Name "not implemented")
+codegenExp ((TA.EUMinus exp), typ) = do
+    var <- codegenExp exp
+    case typ of
+        Type_int -> do
+            res <- mul var $ cons $ C.Int 32 (-1)
+            return res
+        Type_double -> do
+            res <- fmul var $ cons $ C.Float $ F.Double (-1.0)
+            return res
 codegenExp ((TA.ETimes exp1 exp2), typ) = case typ of
     Type_int -> do
         var1 <- codegenExp exp1
