@@ -8,7 +8,8 @@ struct next {
 };
 
 int main() {
-	bool b = true == false;
+	int i = 10;
+	double b = i * 4.5;
 
 	return 0;
 }
