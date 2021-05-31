@@ -8,8 +8,14 @@ struct next {
 };
 
 int main() {
-	int i = 10;
-	double b = i * 4.5;
+    bool b = true == false;
 
-	return 0;
+    // SDoWhile
+    int i;
+    do {
+        i = 0;
+    } while (true); // i < 5 fails due to: "EncodeException "reference to undefined local: Name \"not implemented\", 
+
+
+    return 0; 
 }

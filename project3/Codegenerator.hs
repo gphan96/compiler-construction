@@ -425,7 +425,19 @@ codegenStm TA.SReturnV = do
     retVoid
     return ()
 codegenStm (TA.SWhile exp stm) = do return () -- Task 2
-codegenStm (TA.SDoWhile stm exp) = do return () -- Task 1
+codegenStm (TA.SDoWhile stm exp) = do
+    whileCond <- addBlock $ strToShort "whileCond"
+    whileBlock <- addBlock $ strToShort "whileBlock"
+    continue  <- addBlock $ strToShort "continue"
+    br whileBlock
+    setBlock whileCond
+    cond <- codegenExp exp
+    cbr cond whileBlock continue
+    setBlock whileBlock
+    codegenStm stm
+    br whileCond
+    setBlock continue
+    return ()
 codegenStm (TA.SFor exp1 exp2 exp3 stm) = do
     forCond <- addBlock $ strToShort "forCond"
     forLoop <- addBlock $ strToShort "forLoop"
