@@ -12,10 +12,19 @@ int main() {
 
     // SDoWhile
     int i;
-    do {
-        i = 0;
-    } while (true);
+    // do {
+    //     i = 0;
+    // } while (true);
 
+    // SWhile
+    while (true) {
+        i = 1;
+        return i;
+    }
+
+    // while (true) {
+    //     i = 2;
+    // }
 
     return 0; 
 }

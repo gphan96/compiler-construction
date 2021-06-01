@@ -480,22 +480,23 @@ codegenStm _ TA.SReturnV = do
     retVoid
     return ()
 codegenStm ret (TA.SWhile exp stm) = do
-    whileCond <- addBlock "while.loop"
-    whileLoop <- addBlock "while.block"
-    continue <- addBlock "continue"
-    --
+    whileCond <- addBlock "while.cond"
+    whileBlock <- addBlock "while.block"
     br whileCond
     setBlock whileCond
     cond <- codegenExp exp
-    -- check <- fcmp FP.OEQ true cond
-    cbr cond whileLoop continue
-    --
-    setBlock whileLoop
-    codegenStm ret stm
-    br whileCond
-    --
-    setBlock continue
-    return ()
+    if containsReturn stm then do
+        br whileBlock
+        setBlock whileBlock
+        codegenStm ret stm
+    else do
+        continue <- addBlock "continue"
+        cbr cond whileBlock continue
+        setBlock whileBlock
+        codegenStm ret stm
+        br whileCond
+        setBlock continue
+        return ()
 codegenStm retty (TA.SDoWhile stm exp) = do
     whileBlock <- addBlock $ strToShort "whileBlock"
     br whileBlock
@@ -778,6 +779,7 @@ codegenExp ((TA.ETimes (exp1, t1) (exp2, t2)), typ) = case typ of
         res <- fmul var3 var4
         return res
     _ -> do return $ local VoidType (Name "IMPOSSIBLE")
+codegenExp ((TA.EDiv (exp1, t1) (exp2, t2)), typ) = case typ of
     Type_int -> do
         var1 <- codegenExp (exp1, t1)
         var2 <- codegenExp (exp2, t2)
