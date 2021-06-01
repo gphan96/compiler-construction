@@ -1,40 +1,40 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
 
 module Codegenerator where
 
-import AbsCPP
-import ErrM
-import LexCPP
-import ParCPP
-import PrintCPP
-import qualified TypedAST as TA
+import           AbsCPP
+import           ErrM
+import           LexCPP
+import           ParCPP
+import           PrintCPP
+import qualified TypedAST                        as TA
 
-import Data.Word
-import Data.String
-import Data.List
-import Data.Function
-import qualified Data.Map as Map
-import qualified Data.ByteString.Short as BS
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Char8 as B.Char8
+import qualified Data.ByteString                 as B
+import qualified Data.ByteString.Char8           as B.Char8
+import qualified Data.ByteString.Short           as BS
+import           Data.Function
+import           Data.List
+import qualified Data.Map                        as Map
+import           Data.String
+import           Data.Word
 
-import Control.Monad.Except
-import Control.Monad.State
-import Control.Applicative
+import           Control.Applicative
+import           Control.Monad.Except
+import           Control.Monad.State
 
-import LLVM.Module
-import LLVM.Context
-import LLVM.AST
-import LLVM.AST.Global
-import qualified LLVM.AST as AST
-import qualified LLVM.AST.AddrSpace as A
-import qualified LLVM.AST.Type as T
-import qualified LLVM.AST.Constant as C
-import qualified LLVM.AST.Float as F
-import qualified LLVM.AST.CallingConvention as CC
-import qualified LLVM.AST.IntegerPredicate as IP
+import           LLVM.AST
+import qualified LLVM.AST                        as AST
+import qualified LLVM.AST.AddrSpace              as A
+import qualified LLVM.AST.CallingConvention      as CC
+import qualified LLVM.AST.Constant               as C
+import qualified LLVM.AST.Float                  as F
 import qualified LLVM.AST.FloatingPointPredicate as FP
+import           LLVM.AST.Global
+import qualified LLVM.AST.IntegerPredicate       as IP
+import qualified LLVM.AST.Type                   as T
+import           LLVM.Context
+import           LLVM.Module
 
 
 type Structs = [(Id, [(Id, AbsCPP.Type)])]
@@ -136,7 +136,7 @@ makeBlock :: (Name, BlockState) -> BasicBlock
 makeBlock (l, (BlockState _ s t)) = BasicBlock l (reverse s) (maketerm t)
     where
         maketerm (Just x) = x
-        maketerm Nothing = error $ "Block has no terminator: " ++ (show l)
+        maketerm Nothing  = error $ "Block has no terminator: " ++ (show l)
 
 entryBlockName :: BS.ShortByteString
 entryBlockName = "entry"
@@ -216,7 +216,7 @@ current = do
     c <- gets currentBlock
     blks <- gets blocks
     case Map.lookup c blks of
-        Just x -> return x
+        Just x  -> return x
         Nothing -> error $ "No such block: " ++ show c
 
 -------------------------------------------------------------------------------
@@ -254,15 +254,15 @@ deleteTable = do
 -------------------------------------------------------------------------------
 
 typeMap :: AbsCPP.Type -> AST.Type
-typeMap Type_bool = T.i1
-typeMap Type_int = T.i32
-typeMap Type_double = T.double
-typeMap Type_void = T.void
+typeMap Type_bool        = T.i1
+typeMap Type_int         = T.i32
+typeMap Type_double      = T.double
+typeMap Type_void        = T.void
 typeMap (TypeId (Id id)) = NamedTypeReference $ Name $ strToShort id
 
 true :: Operand
 true = cons $ C.Int { C.integerBits = 1
-                    , C.integerValue = 1 
+                    , C.integerValue = 1
                     }
 
 false :: Operand
@@ -284,10 +284,10 @@ intToDouble a t = do
             return a
 
 typeConv :: AbsCPP.Type -> AbsCPP.Type -> AbsCPP.Type
-typeConv t1 t2 = 
+typeConv t1 t2 =
     if t1 == t2 then t1
     else if t1 == Type_double && t2 == Type_int || t2 == Type_double && t1 == Type_int then Type_double
-    else t1 -- Shouldn't happen, if function called in the right way. 
+    else t1 -- Shouldn't happen, if function called in the right way.
 
 -------------------------------------------------------------------------------
 -- Operators
@@ -391,6 +391,7 @@ codegen mod ((TA.PDefs defs), structs) = withContext $ \context ->
         modn    = mapM (codegenDef structs) defs
         newast  = runLLVM mod modn
 
+
 codegenDef :: Structs -> TA.DefT -> LLVM ()
 codegenDef structs (TA.DFun t (Id id) arg stms) = do
     define (typeMap t) (strToShort id) args bls
@@ -404,7 +405,8 @@ codegenDef structs (TA.DFun t (Id id) arg stms) = do
                 var <- alloca $ typeMap typ2
                 store var $ local (typeMap typ2) (Name $ strToShort id2)
                 declare (strToShort id2) var
-            mapM (codegenStm t) stms
+            --mapM (codegenStm t) stms
+            codegenStms t stms
             if stms == [] then do
                 retVoid
                 return ()
@@ -417,11 +419,25 @@ codegenDef structs (TA.DFun t (Id id) arg stms) = do
                             retVoid
                             return ()
                         _ -> do return ()
+
 codegenDef _ (TA.DStruct (Id id) fields) = do
     struct (strToShort id) fs
     where
         fs = map (\(FDecl t _) -> typeMap t) fields
-        
+
+codegenStms :: AbsCPP.Type -> [TA.StmT] -> Codegen ()
+codegenStms t []       = return ()
+codegenStms t (stm:xs) = case stm of
+    ((TA.SReturn e)) -> do
+        codegenStm t (TA.SReturn e)
+        return ()
+    (TA.SReturnV)    -> do
+        codegenStm t (TA.SReturnV)
+        return ()
+    _                -> do
+        codegenStm t stm
+        codegenStms t xs
+
 codegenStm :: AbsCPP.Type -> TA.StmT -> Codegen ()
 codegenStm _ (TA.SExp exp) = do
     codegenExp exp
@@ -447,8 +463,8 @@ codegenStm ret (TA.SWhile exp stm) = do
     br whileCond
     setBlock whileCond
     cond <- codegenExp exp
-    check <- fcmp FP.OEQ true cond
-    cbr check whileLoop continue
+    -- check <- fcmp FP.OEQ true cond
+    cbr cond whileLoop continue
     --
     setBlock whileLoop
     codegenStm ret stm
@@ -535,7 +551,7 @@ codegenExp (TA.EFalse, typ) = do
     return false
 codegenExp ((TA.EInt int), typ) = do
     return $ cons $ C.Int { C.integerBits = 32
-                          , C.integerValue = int 
+                          , C.integerValue = int
                           }
 codegenExp ((TA.EDouble double), typ) = do
     return $ cons $ C.Float { C.floatValue = (F.Double double) }
@@ -860,7 +876,7 @@ codegenExp ((TA.ECond exp1 (exp2, t2) (exp3, t3)), typ) = do
     if typ == Type_double && t2 == Type_int then do
         convL <- sitofp resL $ typeMap typ
         store ptr convL
-    else do 
+    else do
         store ptr resL
     br continue
     setBlock right
