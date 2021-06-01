@@ -504,8 +504,8 @@ codegenStm retty (TA.SBlock stms) = do
     addTable
     mapM (codegenStm retty) stms
     deleteTable
-codegenStm retty (TA.SIfElse exp stm1 stm2) = do 
-    ifThen <- addBlock $ strToShort "ifThen"
+codegenStm _ (TA.SIfElse exp stm1 stm2) = do return () -- Task 4
+{-    ifThen <- addBlock $ strToShort "ifThen"
     ifElse <- addBlock $ strToShort "ifElse"
     continue <- addBlock $ strToShort "continue"
 --
@@ -522,7 +522,7 @@ codegenStm retty (TA.SIfElse exp stm1 stm2) = do
 --
     setBlock continue
     return ()
-
+-}
 codegenIdins :: AbsCPP.Type -> [TA.IdInT] -> Codegen ()
 codegenIdins t idins = do
     forM idins $ \idin -> do
