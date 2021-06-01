@@ -439,7 +439,23 @@ codegenStm retty (TA.SReturn (exp, t)) = do
 codegenStm _ TA.SReturnV = do
     retVoid
     return ()
-codegenStm _ (TA.SWhile exp stm) = do return () -- Task 2
+codegenStm ret (TA.SWhile exp stm) = do
+    whileCond <- addBlock "while.loop"
+    whileLoop <- addBlock "while.block"
+    continue <- addBlock "continue"
+    --
+    br whileCond
+    setBlock whileCond
+    cond <- codegenExp exp
+    check <- fcmp FP.OEQ true cond
+    cbr check whileLoop continue
+    --
+    setBlock whileLoop
+    codegenStm ret stm
+    br whileCond
+    --
+    setBlock continue
+    return ()
 codegenStm retty (TA.SDoWhile stm exp) = do
     whileCond <- addBlock $ strToShort "whileCond"
     whileBlock <- addBlock $ strToShort "whileBlock"
@@ -721,7 +737,17 @@ codegenExp ((TA.EPlus (e1, t1) (e2, t2)), typ) = do
             res <- fadd var3 var4
             return res
         _ -> do return $ local VoidType (Name "IMPOSSIBLE")
-codegenExp ((TA.EMinus exp1 exp2), typ) = do return $ local VoidType (Name "not implemented") -- Task 2
+codegenExp ((TA.EMinus (exp1, t1) (exp2, t2)), typ) = do
+    var1 <- codegenExp (exp1, t1)
+    var2 <- codegenExp (exp2, t2)
+    case typ of
+        Type_int -> do
+            sub var1 var2
+        Type_double -> do
+            var1' <- intToDouble var1 t1
+            var2' <- intToDouble var2 t2
+            fsub var1' var2'
+        _ -> do return $ local VoidType (Name "IMPOSSIBLE")
 codegenExp ((TA.ETwc (e1, t1) (e2, t2)), typ) = do
     lt <- addBlock $ strToShort "lt"
     ge <- addBlock $ strToShort "ge"
@@ -768,7 +794,17 @@ codegenExp ((TA.ELt (e1, t1) (e2, t2)), typ) = case typeConv t1 t2 of
         res <- fcmp FP.OLT var3 var4
         return res
     _ -> do return $ local VoidType (Name "IMPOSSIBLE")
-codegenExp ((TA.EGt exp1 exp2), typ) = do return $ local VoidType (Name "not implemented") -- Task2
+codegenExp ((TA.EGt (exp1, t1) (exp2, t2)), typ) = do
+    var1 <- codegenExp (exp1, t1)
+    var2 <- codegenExp (exp2, t2)
+    case typeConv t1 t2 of
+        Type_int -> do
+            icmp IP.SGT var1 var2
+        Type_double -> do
+            var1' <- intToDouble var1 t1
+            var2' <- intToDouble var2 t2
+            fcmp FP.OGT var1' var2'
+        _ -> do return $ local VoidType (Name "IMPOSSIBLE")
 codegenExp ((TA.ELtEq (e1, t1) (e2, t2)), typ) = case typeConv t1 t2 of
     Type_int -> do
         var1 <- codegenExp (e1, t1)
