@@ -427,6 +427,7 @@ codegenDef _ (TA.DStruct (Id id) fields) = do
 
 containsReturn :: TA.StmT -> Bool
 containsReturn (TA.SBlock stms) = any (\x -> case x of
+  (TA.SBlock stms2) -> containsReturn (TA.SBlock stms2)
   TA.SReturnV  -> True
   TA.SReturn _ -> True
   _            -> False) stms
@@ -445,7 +446,10 @@ codegenStms t (stm:xs) = case stm of
         return ()
     (TA.SDoWhile st _) -> checkReturn st
     (TA.SWhile _ st)   -> checkReturn st
-    (TA.SFor _ _ _ st) -> checkReturn st
+    (TA.SBlock stms)   -> checkReturn (TA.SBlock stms)
+    (TA.SFor _ _ _ st) -> do
+        codegenStm t stm
+        codegenStms t xs
     _                  -> do
         codegenStm t stm
         codegenStms t xs
@@ -520,10 +524,14 @@ codegenStm retty (TA.SFor exp1 exp2 exp3 stm) = do
     cbr con forLoop continue
     setBlock forLoop
     codegenStm retty stm
-    codegenExp exp3
-    br forCond
-    setBlock continue
-    return ()
+    if containsReturn stm then do
+        setBlock continue
+        return ()
+    else do
+        codegenExp exp3
+        br forCond
+        setBlock continue
+        return ()
 codegenStm retty (TA.SBlock stms) = do
     addTable
     --mapM (codegenStm retty) stms
