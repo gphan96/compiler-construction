@@ -320,7 +320,7 @@ mul a b = instr (Mul False False a b []) T.i32
 fmul :: Operand -> Operand -> Codegen Operand
 fmul a b = instr (FMul noFastMathFlags a b []) T.double
 
-divf :: Operand -> Operand -> Codegen Operand
+divf :: Operand -> Operand -> Codegen Operand -- dic collides with GHC.Real
 divf a b = instr (SDiv False a b []) T.i32
 
 fdiv :: Operand -> Operand -> Codegen Operand
@@ -770,7 +770,6 @@ codegenExp ((TA.ETimes (exp1, t1) (exp2, t2)), typ) = case typ of
         res <- fmul var3 var4
         return res
     _ -> do return $ local VoidType (Name "IMPOSSIBLE")
-codegenExp ((TA.EDiv (exp1, t1) (exp2, t2)), typ) = case typ of
     Type_int -> do
         var1 <- codegenExp (exp1, t1)
         var2 <- codegenExp (exp2, t2)
@@ -879,20 +878,6 @@ codegenExp ((TA.ELtEq (e1, t1) (e2, t2)), typ) = case typeConv t1 t2 of
         var3 <- intToDouble var1 t1
         var4 <- intToDouble var2 t2
         res <- fcmp FP.OLE var3 var4
-        return res
-    _ -> do return $ local VoidType (Name "IMPOSSIBLE")
-codegenExp ((TA.EGtEq (e1, t1) (e2, t2)), typ) = case typeConv t1 t2 of
-    Type_int -> do
-        var1 <- codegenExp (e1, t1)
-        var2 <- codegenExp (e2, t2)
-        res <- icmp IP.SGE var1 var2
-        return res
-    Type_double -> do
-        var1 <- codegenExp (e1, t1)
-        var2 <- codegenExp (e2, t2)
-        var3 <- intToDouble var1 t1
-        var4 <- intToDouble var2 t2
-        res <- fcmp FP.OGE var3 var4
         return res
     _ -> do return $ local VoidType (Name "IMPOSSIBLE")
 codegenExp ((TA.EEq (exp1, t1) (exp2, t2)), typ) = do
