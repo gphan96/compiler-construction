@@ -320,8 +320,8 @@ mul a b = instr (Mul False False a b []) T.i32
 fmul :: Operand -> Operand -> Codegen Operand
 fmul a b = instr (FMul noFastMathFlags a b []) T.double
 
---div :: Operand -> Operand -> Codegen Operand
---div a b = instr (SDiv False a b []) T.i32
+divf :: Operand -> Operand -> Codegen Operand
+divf a b = instr (SDiv False a b []) T.i32
 
 fdiv :: Operand -> Operand -> Codegen Operand
 fdiv a b = instr (FDiv noFastMathFlags a b []) T.double
@@ -425,6 +425,15 @@ codegenDef _ (TA.DStruct (Id id) fields) = do
     where
         fs = map (\(FDecl t _) -> typeMap t) fields
 
+containsReturn :: TA.StmT -> Bool
+containsReturn (TA.SBlock stms) = any (\x -> case x of
+  TA.SReturnV  -> True
+  TA.SReturn _ -> True
+  _            -> False) stms
+containsReturn (TA.SReturnV) = True
+containsReturn (TA.SReturn e) = True
+containsReturn _ = False
+
 codegenStms :: AbsCPP.Type -> [TA.StmT] -> Codegen ()
 codegenStms t []       = return ()
 codegenStms t (stm:xs) = case stm of
@@ -434,9 +443,20 @@ codegenStms t (stm:xs) = case stm of
     (TA.SReturnV)    -> do
         codegenStm t (TA.SReturnV)
         return ()
-    _                -> do
+    (TA.SDoWhile st _) -> checkReturn st
+    (TA.SWhile _ st)   -> checkReturn st
+    (TA.SFor _ _ _ st) -> checkReturn st
+    _                  -> do
         codegenStm t stm
         codegenStms t xs
+    where
+        checkReturn st =
+            if containsReturn st then do
+                codegenStm t stm
+                return ()
+            else do
+                codegenStm t stm
+                codegenStms t xs
 
 codegenStm :: AbsCPP.Type -> TA.StmT -> Codegen ()
 codegenStm _ (TA.SExp exp) = do
@@ -473,18 +493,22 @@ codegenStm ret (TA.SWhile exp stm) = do
     setBlock continue
     return ()
 codegenStm retty (TA.SDoWhile stm exp) = do
-    whileCond <- addBlock $ strToShort "whileCond"
     whileBlock <- addBlock $ strToShort "whileBlock"
-    continue  <- addBlock $ strToShort "continue"
     br whileBlock
-    setBlock whileCond
-    cond <- codegenExp exp
-    cbr cond whileBlock continue
-    setBlock whileBlock
-    codegenStm retty stm
-    br whileCond
-    setBlock continue
-    return ()
+    if containsReturn stm then do
+        setBlock whileBlock
+        codegenStm retty stm
+    else do
+        whileCond <- addBlock $ strToShort "whileCond"
+        continue  <- addBlock $ strToShort "continue"
+        setBlock whileCond
+        cond <- codegenExp exp
+        cbr cond whileBlock continue
+        setBlock whileBlock
+        codegenStm retty stm
+        br whileCond
+        setBlock continue
+        return ()
 codegenStm retty (TA.SFor exp1 exp2 exp3 stm) = do
     forCond <- addBlock $ strToShort "forCond"
     forLoop <- addBlock $ strToShort "forLoop"
@@ -502,27 +526,47 @@ codegenStm retty (TA.SFor exp1 exp2 exp3 stm) = do
     return ()
 codegenStm retty (TA.SBlock stms) = do
     addTable
-    mapM (codegenStm retty) stms
+    --mapM (codegenStm retty) stms
+    codegenStms retty stms
     deleteTable
-codegenStm _ (TA.SIfElse exp stm1 stm2) = do return () -- Task 4
-{-    ifThen <- addBlock $ strToShort "ifThen"
+codegenStm retty (TA.SIfElse exp stm1 stm2) = do -- TODO: clean this up
+    ifThen <- addBlock $ strToShort "ifThen"
     ifElse <- addBlock $ strToShort "ifElse"
-    continue <- addBlock $ strToShort "continue"
 --
     con <- codegenExp exp
     cbr con ifThen ifElse
 --
-    setBlock ifThen
-    codegenStm stm1
-    br continue
+    if containsReturn stm1 then do
+        setBlock ifThen
+        codegenStm retty stm1
+        if containsReturn stm2 then do
+            setBlock ifElse
+            codegenStm retty stm2
+            return ()
+        else do
+            continue <- addBlock $ strToShort "continue"
+            setBlock ifElse
+            codegenStm retty stm2
+            br continue
+            setBlock continue
+            return ()
+    else do
+        continue <- addBlock $ strToShort "continue"
+        setBlock ifThen
+        codegenStm retty stm1
+        br continue
+        setBlock continue
+        if containsReturn stm2 then do
+            setBlock ifElse
+            codegenStm retty stm2
+            return ()
+        else do
+            setBlock ifElse
+            codegenStm retty stm2
+            br continue
+            setBlock continue
+            return ()
 --
-    setBlock ifElse
-    codegenStm stm2
-    br continue
---
-    setBlock continue
-    return ()
--}
 codegenIdins :: AbsCPP.Type -> [TA.IdInT] -> Codegen ()
 codegenIdins t idins = do
     forM idins $ \idin -> do
@@ -726,11 +770,12 @@ codegenExp ((TA.ETimes (exp1, t1) (exp2, t2)), typ) = case typ of
         res <- fmul var3 var4
         return res
     _ -> do return $ local VoidType (Name "IMPOSSIBLE")
-{--codegenExp ((TA.EDiv (exp1, t1) (exp2, t2)), typ) = case typ of
+codegenExp ((TA.EDiv (exp1, t1) (exp2, t2)), typ) = case typ of
     Type_int -> do
         var1 <- codegenExp (exp1, t1)
         var2 <- codegenExp (exp2, t2)
-        res <- Codegenerator.div var1 var2
+        res <- Codegenerator.divf var1 var2
+        res <- divf var1 var2
         return res
     Type_double -> do
         var1 <- codegenExp (exp1, t1)
@@ -738,8 +783,9 @@ codegenExp ((TA.ETimes (exp1, t1) (exp2, t2)), typ) = case typ of
         var3 <- intToDouble var1 t1
         var4 <- intToDouble var2 t2
         res <- fcmp FP.OLE var3 var4
+        res <- fdiv var3 var4
         return res
-    _ -> do return $ local VoidType (Name "IMPOSSIBLE")--}
+    _ -> do return $ local VoidType (Name "IMPOSSIBLE")
 codegenExp ((TA.EPlus (e1, t1) (e2, t2)), typ) = do
     var1 <- codegenExp (e1, t1)
     var2 <- codegenExp (e2, t2)
@@ -835,7 +881,20 @@ codegenExp ((TA.ELtEq (e1, t1) (e2, t2)), typ) = case typeConv t1 t2 of
         res <- fcmp FP.OLE var3 var4
         return res
     _ -> do return $ local VoidType (Name "IMPOSSIBLE")
-codegenExp ((TA.EGtEq exp1 exp2), typ) = do return  $ local VoidType (Name "not implemented") -- Task 4
+codegenExp ((TA.EGtEq (e1, t1) (e2, t2)), typ) = case typeConv t1 t2 of
+    Type_int -> do
+        var1 <- codegenExp (e1, t1)
+        var2 <- codegenExp (e2, t2)
+        res <- icmp IP.SGE var1 var2
+        return res
+    Type_double -> do
+        var1 <- codegenExp (e1, t1)
+        var2 <- codegenExp (e2, t2)
+        var3 <- intToDouble var1 t1
+        var4 <- intToDouble var2 t2
+        res <- fcmp FP.OGE var3 var4
+        return res
+    _ -> do return $ local VoidType (Name "IMPOSSIBLE")
 codegenExp ((TA.EEq (exp1, t1) (exp2, t2)), typ) = do
     val1 <- codegenExp (exp1, t1)
     val2 <- codegenExp (exp2, t2)
