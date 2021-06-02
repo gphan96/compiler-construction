@@ -418,7 +418,15 @@ codegenDef structs (TA.DFun t (Id id) arg stms) = do
                         Type_void -> do
                             retVoid
                             return ()
-                        _ -> do return ()
+                        _ -> do
+                            cur <- current
+                            case cur of
+                                (BlockState _ _ Nothing) -> do
+                                    defPtr <- alloca $ typeMap t
+                                    defRet <- load defPtr $ typeMap t
+                                    ret defRet
+                                    return ()
+                                _ -> do return ()
 
 codegenDef _ (TA.DStruct (Id id) fields) = do
     struct (strToShort id) fs
