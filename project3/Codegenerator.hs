@@ -898,6 +898,20 @@ codegenExp ((TA.ELtEq (e1, t1) (e2, t2)), typ) = case typeConv t1 t2 of
         res <- fcmp FP.OLE var3 var4
         return res
     _ -> do return $ local VoidType (Name "IMPOSSIBLE")
+codegenExp ((TA.EGtEq (e1, t1) (e2, t2)), typ) = case typeConv t1 t2 of
+    Type_int -> do
+        var1 <- codegenExp (e1, t1)
+        var2 <- codegenExp (e2, t2)
+        res <- icmp IP.SGE var1 var2
+        return res
+    Type_double -> do
+        var1 <- codegenExp (e1, t1)
+        var2 <- codegenExp (e2, t2)
+        var3 <- intToDouble var1 t1
+        var4 <- intToDouble var2 t2
+        res <- fcmp FP.OGE var3 var4
+        return res
+    _ -> do return $ local VoidType (Name "IMPOSSIBLE") 
 codegenExp ((TA.EEq (exp1, t1) (exp2, t2)), typ) = do
     val1 <- codegenExp (exp1, t1)
     val2 <- codegenExp (exp2, t2)
